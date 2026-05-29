@@ -7,12 +7,6 @@ import (
 	"net"
 )
 
-type Message struct {
-	Type    string
-	From    string
-	Payload []byte
-}
-
 type Server struct {
 	address string
 }

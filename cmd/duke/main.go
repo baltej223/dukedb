@@ -11,7 +11,6 @@ import (
 
 func main() {
 	a := node.Initialise("a", "localhost", "8080")
-	_ = a
 	b := node.Initialise("b", "localhost", "8081")
 	network := make(map[string][]*node.Node)
 	network["a"] = []*node.Node{b} // b is connected to automatic
@@ -23,7 +22,7 @@ func main() {
 	hostname := me.GetFullHostname()
 	server := transport.NewServer(hostname)
 
-	log.Println("starting duke node on " + me.GetPort())
+	log.Println("Starting duke node on " + me.GetPort())
 
 	go func() {
 		err := server.Start(transport.HandleConnection)
@@ -34,13 +33,6 @@ func main() {
 	}()
 
 	time.Sleep(5 * time.Second)
-
-	value, err := transport.Send(network[me.ID][0], "Hello from "+me.ID)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(value)
 
 	select {}
 }
