@@ -7,11 +7,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/baltej223/dukedb/internal/storing"
+	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/transport"
 )
 
-func handler(con net.Conn) {
+func handler(conn net.Conn) {
 	remoteAddr := conn.RemoteAddr().String()
 
 	fmt.Println("new connection from", remoteAddr)
@@ -27,7 +27,10 @@ func handler(con net.Conn) {
 
 		fmt.Printf("received from %s: %s", remoteAddr, message)
 
-		response := "ack: " + message
+		req, _ := transport.Parse(message)
+
+		m := transport.CreatePongMessage(req.RequestID, req.NodeID)
+		response := transport.Serialize(m)
 
 		_, err = conn.Write([]byte(response))
 		if err != nil {
@@ -53,7 +56,7 @@ func main() {
 	log.Println("Starting duke node on " + "8000")
 
 	go func() {
-		err := server.Start(transport.HandleConnection)
+		err := server.Start(handler)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -62,11 +65,10 @@ func main() {
 
 	time.Sleep(5 * time.Second)
 
-	_ = storing.InitialiseKV()
-	storing.Put("Name", []byte("Baltej"))
+	message, _ := transport.CreatePingMessage("a")
+	p := cluster.Peer{"a", "localhost:8001"}
 
-	get, _ := storing.Get("Name")
-	fmt.Printf("Name: %s", get)
-
+	response, _ := transport.SendMessage(p, message)
+	fmt.Printf("%s", response.RequestID)
 	select {}
 }
