@@ -1,62 +1,42 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
-	"net"
 	"time"
 
 	"github.com/baltej223/dukedb/internal/cluster"
+	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
 )
 
-func handler(conn net.Conn) {
-	remoteAddr := conn.RemoteAddr().String()
-
-	fmt.Println("new connection from", remoteAddr)
-
-	reader := bufio.NewReader(conn)
-
-	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("connection closed:", remoteAddr)
-			return
-		}
-
-		fmt.Printf("received from %s: %s", remoteAddr, message)
-
-		req, _ := transport.Parse(message)
-
-		m := transport.CreatePongMessage(req.RequestID, req.NodeID)
-		response := transport.Serialize(m)
-
-		_, err = conn.Write([]byte(response))
-		if err != nil {
-			fmt.Println("write error:", err)
-			return
-		}
-	}
-}
-
 func main() {
-	// a := node.Initialise("a", "localhost", "8080")
-	// b := node.Initialise("b", "localhost", "8081")
-	// network := make(map[string][]*node.Node)
-	// network["a"] = []*node.Node{b} // b is connected to automatic
-	// network["b"] = []*node.Node{a}
-	//
-	// me := a
-	// // Eventually I will need to set it up for automatic ID choosing.
+	// Flags handling
+	selfAddress := flag.String("selfAddr", "localhost:8000", "Address of the current node, Example localhost:8000")
+	peerAddress := flag.String("peerAddr", "localhost:8001", "Address of peer node, Example: localhost:8001")
+	peerNodeID := flag.String("peerNodeID", "b", "Peer node ID, Example: b")
+	// FLAGS END
+	flag.Parse()
 
-	hostname := ":8000"
+	hostname := *selfAddress
+	GloabalHOSTNAME := hostname
 	server := transport.NewServer(hostname)
+
+	// Set up internal KV
+	storing.InitialiseKVI()
+	neighbours := []cluster.Peer{{*peerNodeID, *peerAddress}}
+	neighboursBytes, err := json.Marshal(neighbours)
+	if err != nil {
+		panic(err) // or handle the error properly
+	}
+	storing.PutI("neighbours", neighboursBytes)
 
 	log.Println("Starting duke node on " + "8000")
 
 	go func() {
-		err := server.Start(handler)
+		err := server.Start(transport.HandleMessage)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -66,9 +46,8 @@ func main() {
 	time.Sleep(5 * time.Second)
 
 	message, _ := transport.CreatePingMessage("a")
-	p := cluster.Peer{"a", "localhost:8001"}
+	p := neighbours[0]
 
-	response, _ := transport.SendMessage(p, message)
-	fmt.Printf("%s", response.RequestID)
+	_ = transport.SendMessage(p, message, GloabalHOSTNAME)
 	select {}
 }

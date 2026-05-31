@@ -2,9 +2,10 @@
 package transport
 
 import (
-	"bufio"
 	"fmt"
 	"net"
+
+	"github.com/baltej223/dukedb/internal/cluster"
 )
 
 type Server struct {
@@ -39,17 +40,15 @@ func (s *Server) Start(connectionHandler func(conn net.Conn)) error {
 	}
 }
 
-func HandleConnection(conn net.Conn) {
+func HandleMessage(conn net.Conn) {
 	defer conn.Close()
 
 	remoteAddr := conn.RemoteAddr().String()
 
 	fmt.Println("new connection from", remoteAddr)
 
-	reader := bufio.NewReader(conn)
-
 	for {
-		message, err := reader.ReadString('\n')
+		message, err := readMessage(conn)
 		if err != nil {
 			fmt.Println("connection closed:", remoteAddr)
 			return
@@ -57,12 +56,19 @@ func HandleConnection(conn net.Conn) {
 
 		fmt.Printf("received from %s: %s", remoteAddr, message)
 
-		response := "ack: " + message
+		messageParsed, err := Parse(message)
 
-		_, err = conn.Write([]byte(response))
+		fmt.Println(messageParsed.String())
 		if err != nil {
-			fmt.Println("write error:", err)
-			return
+			fmt.Println("Error in message reading, Err: %s", err)
+			continue
+		}
+
+		if messageParsed.Type == PING {
+			pong := CreatePongMessage(messageParsed.RequestID, "a")
+			peer, _ := cluster.PeerFromNodeID(messageParsed.NodeID)
+			_ = SendMessage(peer, pong, "SENDING:")
+
 		}
 	}
 }

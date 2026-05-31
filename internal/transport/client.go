@@ -2,6 +2,7 @@ package transport
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net"
 	"strconv"
@@ -10,32 +11,27 @@ import (
 	"github.com/baltej223/dukedb/internal/cluster"
 )
 
-func SendMessage(n cluster.Peer, m Message) (ParsedMessage, error) {
+func SendMessage(n cluster.Peer, m Message, me string) error {
 	messageString := Serialize(m)
-	response, err := Send(n, messageString)
+	fmt.Printf("[%s] Sending message to %s\n", me, n.Addr)
+	err := Send(n, messageString)
 	if err != nil {
-		return ParsedMessage{},
-			err
+		return err
 	}
-	parsedResponse, err := Parse(response)
-	if err != nil {
-		return ParsedMessage{},
-			err
-	}
-	return parsedResponse, nil
+	return nil
 }
 
 /*
 * Send function sends the provided string to the node
 * */
 
-func Send(n cluster.Peer, payload string) (string, error) {
+func Send(n cluster.Peer, payload string) error {
 	length := strconv.Itoa(len(payload))
 
 	// Initiate the connection
 	conn, err := net.Dial("tcp", n.Addr)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer conn.Close()
 
@@ -43,15 +39,9 @@ func Send(n cluster.Peer, payload string) (string, error) {
 
 	_, err = conn.Write(packet)
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	response, error := readMessage(conn)
-	if error != nil {
-		return "", error
-	}
-
-	return response, nil
+	return nil
 }
 
 /*

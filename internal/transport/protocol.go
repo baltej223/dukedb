@@ -115,6 +115,13 @@ type ParsedMessage struct {
 	Peers []Peer
 }
 
+func (PM ParsedMessage) String() string {
+	result := "TYPE " + PM.Type.String() + "\n"
+	result += "REQUEST_ID " + PM.RequestID + "\n"
+
+	return result
+}
+
 func EncodeValue(v []byte) string {
 	return base64.StdEncoding.EncodeToString(v)
 }
