@@ -4,8 +4,6 @@ package transport
 import (
 	"fmt"
 	"net"
-
-	"github.com/baltej223/dukedb/internal/cluster"
 )
 
 type Server struct {
@@ -40,35 +38,16 @@ func (s *Server) Start(connectionHandler func(conn net.Conn)) error {
 	}
 }
 
-func HandleMessage(conn net.Conn) {
-	defer conn.Close()
-
-	remoteAddr := conn.RemoteAddr().String()
-
-	fmt.Println("new connection from", remoteAddr)
-
-	for {
-		message, err := readMessage(conn)
-		if err != nil {
-			fmt.Println("connection closed:", remoteAddr)
-			return
-		}
-
-		fmt.Printf("received from %s: %s", remoteAddr, message)
-
-		messageParsed, err := Parse(message)
-
-		fmt.Println(messageParsed.String())
-		if err != nil {
-			fmt.Println("Error in message reading, Err: %s", err)
-			continue
-		}
-
-		if messageParsed.Type == PING {
-			pong := CreatePongMessage(messageParsed.RequestID, "a")
-			peer, _ := cluster.PeerFromNodeID(messageParsed.NodeID)
-			_ = SendMessage(peer, pong, "SENDING:")
-
-		}
+func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
+	raw, err := readMessage(conn)
+	if err != nil {
+		return
 	}
+
+	parsed, err := Parse(raw)
+	if err != nil {
+		return
+	}
+
+	dispatch(parsed)
 }

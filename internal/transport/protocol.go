@@ -377,6 +377,9 @@ func CreatePongMessage(
 	requestID string,
 	nodeID string,
 ) Message {
+	if len(nodeID) == 0 {
+		panic("nodeID can't be empty for reply mesages.")
+	}
 	return Message{
 		Type:      PONG,
 		RequestID: requestID,

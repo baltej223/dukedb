@@ -9,11 +9,13 @@ import (
 	"strings"
 
 	"github.com/baltej223/dukedb/internal/cluster"
+	"github.com/baltej223/dukedb/internal/storing"
 )
 
-func SendMessage(n cluster.Peer, m Message, me string) error {
+func SendMessage(n cluster.Peer, m Message) error {
+	hostname, _ := storing.GetI("hostname")
 	messageString := Serialize(m)
-	fmt.Printf("[%s] Sending message to %s\n", me, n.Addr)
+	fmt.Printf("[%s] Sending message to %s\n", hostname, n.Addr)
 	err := Send(n, messageString)
 	if err != nil {
 		return err

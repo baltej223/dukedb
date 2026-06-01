@@ -1,10 +1,10 @@
+// Package node owns the node
 package node
 
 type Node struct {
-	ID   string
-	host string
-	port string
-	uri  string
+	ID       string
+	hostname string
+
 	// Cluster     *cluster.Manager
 	// Transport 	 *transport.Transport
 	// Storage     *storage.Engine
@@ -12,19 +12,18 @@ type Node struct {
 	// Replication *replication.Manager
 }
 
-func Initialise(ID string, host string, port string) *Node {
+func Initialise(ID string, hostname string) *Node {
 	return &Node{
 		ID,
-		host,
-		port,
-		host + ":" + port,
+		hostname,
 	}
 }
 
-func (n *Node) GetPort() string {
-	return n.port
-}
-
-func (n *Node) GetFullHostname() string {
-	return n.uri
-}
+//
+// func (n *Node) GetPort() string {
+// 	return n.port
+// }
+//
+// func (n *Node) GetFullHostname() string {
+// 	return n.uri
+// }
