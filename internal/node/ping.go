@@ -18,7 +18,7 @@ import (
 // 	transport.SendMessage(peer, pong)
 // }
 
-func handlePing(msg transport.ParsedMessage, me Node) {
+func handlePing(msg transport.ParsedMessage, me *Node) {
 	log.Printf(
 		"[node=%s] received PING request_id=%s from node=%s",
 		me.ID,

@@ -3,6 +3,7 @@ package transport
 
 import (
 	"fmt"
+	"log"
 	"net"
 )
 
@@ -38,16 +39,43 @@ func (s *Server) Start(connectionHandler func(conn net.Conn)) error {
 	}
 }
 
+// func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
+// 	raw, err := readMessage(conn)
+// 	if err != nil {
+// 		return
+// 	}
+//
+// 	parsed, err := Parse(raw)
+// 	if err != nil {
+// 		return
+// 	}
+//
+// 	dispatch(parsed)
+// }
+//
+
 func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
+	log.Println("new connection")
+
 	raw, err := readMessage(conn)
 	if err != nil {
+		log.Println("read error:", err)
 		return
 	}
 
+	log.Printf("raw message:\n%s", raw)
+
 	parsed, err := Parse(raw)
 	if err != nil {
+		log.Println("parse error:", err)
 		return
 	}
+
+	log.Printf(
+		"parsed type=%s request_id=%s",
+		parsed.Type,
+		parsed.RequestID,
+	)
 
 	dispatch(parsed)
 }

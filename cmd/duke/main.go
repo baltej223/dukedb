@@ -13,11 +13,6 @@ import (
 	"github.com/baltej223/dukedb/internal/transport"
 )
 
-type s struct {
-	Hostname   string
-	SelfNodeID string
-}
-
 func main() {
 	// Flags handling
 	selfAddress := flag.String("selfAddr", "localhost:8000", "Address of the current node, Example localhost:8000")
@@ -29,11 +24,9 @@ func main() {
 	flag.Parse()
 
 	hostname := *selfAddress
-	GloabalHOSTNAME := hostname
 
 	// Build node here
-	me := *node.Initialise(*selfNodeID, *selfAddress)
-	//
+	me := node.Initialise(*selfNodeID, *selfAddress)
 
 	server := transport.NewServer(hostname)
 
@@ -42,12 +35,7 @@ func main() {
 	neighbours := []cluster.Peer{{*peerNodeID, *peerAddress}}
 	storing.PutIJSON("neighbours", neighbours)
 
-	// Storing GloabalHOSTNAME as hostname
-	storing.PutI("hostname", []byte(GloabalHOSTNAME))
-	me_ := s{hostname, *selfNodeID}
-	storing.PutIJSON("me", me_)
-
-	log.Println("Starting duke node on " + "8000")
+	log.Println("Starting duke node on " + me.Hostname)
 
 	go func() {
 		err := server.Start(func(conn net.Conn) {
@@ -64,11 +52,14 @@ func main() {
 		fmt.Println("Done")
 	}()
 
-	time.Sleep(time.Duration(*delay) * time.Second)
+	go func() {
+		time.Sleep(time.Duration(*delay) * time.Second)
 
-	message, _ := transport.CreatePingMessage(me.ID)
-	p := neighbours[0]
+		message, _ := transport.CreatePingMessage(me.ID)
+		p := neighbours[0]
 
-	_ = transport.SendMessage(p, message)
+		response, _ := me.SendRequestAndWait(p, message, 10*time.Second)
+		fmt.Println("Done " + response.Type.String())
+	}()
 	select {}
 }
