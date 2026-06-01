@@ -9,8 +9,14 @@ run-two-nodes:
 	./main -selfAddr "localhost:8001" -selfNodeID "b" -peerAddr "localhost:8000" -peerNodeID "a" -delay 8 & \
 	wait
 
-kill-pro:
+kill-2pro:
 	sudo lsof -ti:8000,8001 | xargs kill -9
 
 restart:
 	make kill-pro ; make compile && make run-two-nodes
+
+run-three-nodes:
+	./main -selfAddr "localhost:8000" -selfNodeID "a" -peerAddr "localhost:8001" -peerNodeID "b" -delay 3 & \
+	./main -selfAddr "localhost:8001" -selfNodeID "b" -peerAddr "localhost:8000" -peerNodeID "a" -delay 8 & \
+	./main1 -selfAddr "localhost:8002" -selfNodeID "c" -peerAddr "localhost:8000" -peerNodeID "a" -delay 5
+	wait

@@ -1,27 +1,91 @@
 // Package cluster takes care of the cluster itself, knows about cluster, gossip lives here.
 package cluster
 
-import (
-	"errors"
+import "sync"
 
-	"github.com/baltej223/dukedb/internal/storing"
-)
+type ClusterManager struct {
+	mu sync.RWMutex
 
-type Peer struct {
-	NodeID string
-	Addr   string
+	Neighbours map[string]Peer
 }
 
-// get peer from node id
+func NewClusterManager(
+	peers []Peer,
+) *ClusterManager {
+	neighbours := make(
+		map[string]Peer,
+	)
 
-func PeerFromNodeID(NodeIDOfPeer string) (Peer, error) {
-	neighbours, _ := storing.GetIJSON[[]Peer]("neighbours")
-
-	for i := 0; i < len(neighbours); i++ {
-		if neighbours[i].NodeID == NodeIDOfPeer {
-			return neighbours[i], nil
-		}
+	for _, peer := range peers {
+		neighbours[peer.NodeID] = peer
 	}
 
-	return Peer{}, errors.New("Error")
+	return &ClusterManager{
+		Neighbours: neighbours,
+	}
+}
+
+func (c *ClusterManager) AddPeer(
+	peer Peer,
+) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.Neighbours[peer.NodeID] = peer
+}
+
+func (c *ClusterManager) RemovePeer(
+	nodeID string,
+) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.Neighbours, nodeID)
+}
+
+func (c *ClusterManager) GetPeer(
+	nodeID string,
+) (Peer, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	peer, ok := c.Neighbours[nodeID]
+	return peer, ok
+}
+
+func (c *ClusterManager) HasPeer(
+	nodeID string,
+) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	_, ok := c.Neighbours[nodeID]
+	return ok
+}
+
+func (c *ClusterManager) GetPeers() []Peer {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	peers := make(
+		[]Peer,
+		0,
+		len(c.Neighbours),
+	)
+
+	for _, peer := range c.Neighbours {
+		peers = append(
+			peers,
+			peer,
+		)
+	}
+
+	return peers
+}
+
+func (c *ClusterManager) Count() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return len(c.Neighbours)
 }

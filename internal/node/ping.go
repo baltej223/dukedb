@@ -3,7 +3,6 @@ package node
 import (
 	"log"
 
-	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/transport"
 )
 
@@ -31,15 +30,16 @@ func handlePing(msg transport.ParsedMessage, me *Node) {
 		me.ID,
 	)
 
-	peer, err := cluster.PeerFromNodeID(msg.NodeID)
-	if err != nil {
+	peer, ok := me.Cluster.GetPeer(
+		msg.NodeID,
+	)
+	if !ok {
 		log.Printf(
-			"[node=%s] failed to find peer %s: %v",
+			"[node=%s] failed to find peer %s",
 			me.ID,
 			msg.NodeID,
-			err,
 		)
-		return
+		panic("error")
 	}
 
 	log.Printf(

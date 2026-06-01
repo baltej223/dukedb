@@ -9,7 +9,6 @@ import (
 
 	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/node"
-	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
 )
 
@@ -25,16 +24,11 @@ func main() {
 
 	hostname := *selfAddress
 
+	neighbours := []cluster.Peer{{*peerNodeID, *peerAddress}}
 	// Build node here
-	me := node.Initialise(*selfNodeID, *selfAddress)
+	me := node.Initialise(*selfNodeID, *selfAddress, neighbours)
 
 	server := transport.NewServer(hostname)
-
-	// Set up internal KV
-	storing.InitialiseKVI()
-	neighbours := []cluster.Peer{{*peerNodeID, *peerAddress}}
-	storing.PutIJSON("neighbours", neighbours)
-
 	log.Println("Starting duke node on " + me.Hostname)
 
 	go func() {
@@ -51,13 +45,21 @@ func main() {
 		}
 		fmt.Println("Done")
 	}()
+	//
+	// go func() {
+	// 	time.Sleep(time.Duration(*delay) * time.Second)
+	//
+	// 	message, _ := transport.CreatePingMessage(me.ID)
+	// 	p := neighbours[0]
+	//
+	// 	response, _ := me.SendRequestAndWait(p, message, 10*time.Second)
+	// 	fmt.Println("Done " + response.Type.String())
+	// }()
 
 	go func() {
 		time.Sleep(time.Duration(*delay) * time.Second)
-
-		message, _ := transport.CreatePingMessage(me.ID)
+		message, _ := transport.CreateJoinMessage(*selfNodeID, *selfAddress)
 		p := neighbours[0]
-
 		response, _ := me.SendRequestAndWait(p, message, 10*time.Second)
 		fmt.Println("Done " + response.Type.String())
 	}()

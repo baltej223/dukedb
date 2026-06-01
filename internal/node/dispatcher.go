@@ -19,7 +19,9 @@ func Dispatch(msg transport.ParsedMessage, me *Node) {
 		handlePing(msg, me)
 	case transport.PONG:
 		handlePong(msg, me)
-		// case transport.JOIN:
-		// 	handlers.handleJoin(msg)
+	case transport.JOIN:
+		handleJoin(msg, me)
+	case transport.JOIN_ACK:
+		handleJoinACK(msg, me)
 	}
 }

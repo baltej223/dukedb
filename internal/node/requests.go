@@ -24,13 +24,17 @@ func (n *Node) SendRequestAndWait(
 	}
 
 	n.AddPendingRequest(msg.RequestID, &pendingRequest)
-	transport.SendMessage(peer, msg)
+	err := transport.SendMessage(peer, msg)
+	if err != nil {
+		return transport.ParsedMessage{}, err
+	}
 
 	response, err := n.WaitForPendingRequest(msg.RequestID, timeout)
 	if err != nil {
-		if err == ErrRequestTimedOut {
+		if errors.Is(err, ErrRequestTimedOut) {
 			n.RemovePendingRequest(msg.RequestID)
 			// Peer suspected to be unhealthy
+			n.AddSuspectedDeadPeer(peer)
 		}
 	}
 	n.RemovePendingRequest(msg.RequestID)

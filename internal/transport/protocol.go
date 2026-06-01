@@ -103,6 +103,7 @@ type ParsedMessage struct {
 	RequestID string
 
 	NodeID string
+	Addr   string
 
 	Key   string
 	Value []byte
@@ -210,6 +211,7 @@ func Parse(raw string) (ParsedMessage, error) {
 
 	case JOIN:
 		msg.NodeID = headers["NODE_ID"]
+		msg.Addr = headers["ADDR"]
 
 	case PUT:
 		msg.Key = headers["KEY"]

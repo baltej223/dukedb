@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/transport"
 )
 
@@ -15,7 +16,10 @@ type Node struct {
 
 	PendingRequests map[string]*PendingRequest
 	PendingMu       sync.RWMutex
-	// Cluster     *cluster.Manager
+
+	SuspectedDeadPeers   SuspectedDeadPeers
+	SuspectedDeadPeersMu sync.RWMutex
+	Cluster              *cluster.ClusterManager
 	// Transport 	 *transport.Transport
 	// Storage     *storage.Engine
 	// Router      *routing.Router
@@ -29,13 +33,26 @@ type PendingRequest struct {
 	ResultChan chan transport.ParsedMessage
 }
 
-func Initialise(ID string, hostname string) *Node {
+func Initialise(
+	ID string,
+	hostname string,
+	peers []cluster.Peer,
+) *Node {
 	return &Node{
 		ID:       ID,
 		Hostname: hostname,
 
 		PendingRequests: make(
 			map[string]*PendingRequest,
+		),
+
+		SuspectedDeadPeers: make(
+			SuspectedDeadPeers,
+			0,
+		),
+
+		Cluster: cluster.NewClusterManager(
+			peers,
 		),
 	}
 }
