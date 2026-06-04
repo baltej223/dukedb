@@ -73,15 +73,11 @@ To learn:
 - Systems programming
 
 ## Current Features
-
-- TCP transport
 - Custom protocol
-- Multi-node communication
-
-## Planned
-
 - Gossip protocol
 - Routing
+
+## Planned
 - Replication
 - Persistent storage
 
