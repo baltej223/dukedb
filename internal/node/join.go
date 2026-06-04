@@ -33,9 +33,14 @@ func handleJoinACK(msg transport.ParsedMessage, me *Node) {
 
 	req.ResultChan <- msg
 
+	for _, value := range msg.Peers {
+		me.Cluster.AddPeer(value)
+	}
+
 	log.Printf(
 		"[node=%s] pending request fulfilled request_id=%s",
 		me.ID,
 		msg.RequestID,
 	)
+	me.RemovePendingRequest(msg.RequestID)
 }

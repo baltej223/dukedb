@@ -2,7 +2,9 @@
 package node
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -20,6 +22,8 @@ type Node struct {
 	SuspectedDeadPeers   SuspectedDeadPeers
 	SuspectedDeadPeersMu sync.RWMutex
 	Cluster              *cluster.ClusterManager
+
+	GossipLoopTime time.Duration
 	// Transport 	 *transport.Transport
 	// Storage     *storage.Engine
 	// Router      *routing.Router
@@ -37,6 +41,7 @@ func Initialise(
 	ID string,
 	hostname string,
 	peers []cluster.Peer,
+	GossipLoopTime time.Duration,
 ) *Node {
 	return &Node{
 		ID:       ID,
@@ -54,6 +59,8 @@ func Initialise(
 		Cluster: cluster.NewClusterManager(
 			peers,
 		),
+
+		GossipLoopTime: GossipLoopTime,
 	}
 }
 
@@ -104,4 +111,18 @@ func (n *Node) WaitForPendingRequest(
 		return transport.ParsedMessage{},
 			ErrRequestTimedOut
 	}
+}
+
+func (me *Node) GetAllNodes() []cluster.Peer {
+	neighbours := me.Cluster.GetPeers()
+	selfAsPeer := cluster.NewPeer(me.ID, me.Hostname)
+	return append(neighbours, selfAsPeer)
+}
+
+func (me *Node) AllNodesSort() []cluster.Peer {
+	currentNodes := me.GetAllNodes()
+	slices.SortFunc(currentNodes, func(a, b cluster.Peer) int {
+		return cmp.Compare(a.NodeID, b.NodeID)
+	})
+	return currentNodes
 }

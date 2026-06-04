@@ -30,6 +30,7 @@ const (
 	JOIN
 	JOIN_ACK
 	JOIN_REJECT
+	GOSSIPMEMBERSHIP
 )
 
 func (m MessageType) String() string {
@@ -56,6 +57,8 @@ func (m MessageType) String() string {
 		return "JOIN_ACK"
 	case JOIN_REJECT:
 		return "JOIN_REJECT"
+	case GOSSIPMEMBERSHIP:
+		return "GOSSIP_MEMBERSHIP"
 	default:
 		return "UNKNOWN"
 	}
@@ -85,6 +88,8 @@ func ParseMessageType(s string) (MessageType, error) {
 		return JOIN_ACK, nil
 	case "JOIN_REJECT":
 		return JOIN_REJECT, nil
+	case "GOSSIP_MEMBERSHIP":
+		return GOSSIPMEMBERSHIP, nil
 	default:
 		return 0, fmt.Errorf("unknown message type: %s", s)
 	}
@@ -165,6 +170,8 @@ func Serialize(msg Message) string {
 
 // Parse converts the Message struct to string
 func Parse(raw string) (ParsedMessage, error) {
+	// type TheRequestsHavingPeers = GOSSIPMEMBERSHIP or JOIN_ACK
+
 	raw = strings.TrimSpace(raw)
 
 	if raw == "" {
@@ -246,34 +253,11 @@ func Parse(raw string) (ParsedMessage, error) {
 		msg.Reason = headers["REASON"]
 
 	case JOIN_ACK:
+		msg.Peers, _ = parsePeers(headers)
 
-		countStr := headers["PEER_COUNT"]
+	case GOSSIPMEMBERSHIP:
+		msg.Peers, _ = parsePeers(headers) // Both of these messages looks exactly the same
 
-		count, err := strconv.Atoi(countStr)
-		if err != nil {
-			return ParsedMessage{}, err
-		}
-
-		for i := 0; i < count; i++ {
-
-			nodeID := headers[fmt.Sprintf(
-				"PEER_%d_NODE_ID",
-				i,
-			)]
-
-			addr := headers[fmt.Sprintf(
-				"PEER_%d_ADDR",
-				i,
-			)]
-
-			msg.Peers = append(
-				msg.Peers,
-				Peer{
-					NodeID: nodeID,
-					Addr:   addr,
-				},
-			)
-		}
 	}
 
 	return msg, nil
@@ -293,6 +277,39 @@ func createRequestID() (string, error) {
 	}
 
 	return id, nil
+}
+
+func parsePeers(headers map[string]string) ([]cluster.Peer, error) {
+	countStr := headers["PEER_COUNT"]
+
+	count, err := strconv.Atoi(countStr)
+	if err != nil {
+		return []cluster.Peer{}, err
+	}
+
+	peers := make([]Peer, 0, count)
+
+	for i := 0; i < count; i++ {
+
+		nodeID := headers[fmt.Sprintf(
+			"PEER_%d_NODE_ID",
+			i,
+		)]
+
+		addr := headers[fmt.Sprintf(
+			"PEER_%d_ADDR",
+			i,
+		)]
+
+		peers = append(
+			peers,
+			Peer{
+				NodeID: nodeID,
+				Addr:   addr,
+			},
+		)
+	}
+	return peers, nil
 }
 
 // ----------------------------------------------------
@@ -337,6 +354,7 @@ func CreatePutMessage(
 
 func CreateGetMessage(
 	key string,
+	nodeID string,
 ) (Message, error) {
 	requestID, err := createRequestID()
 	if err != nil {
@@ -347,7 +365,8 @@ func CreateGetMessage(
 		Type:      GET,
 		RequestID: requestID,
 		Headers: map[string]string{
-			"KEY": key,
+			"KEY":     key,
+			"NODE_ID": nodeID,
 		},
 	}, nil
 }
@@ -368,6 +387,38 @@ func CreateJoinMessage(
 			"NODE_ID": nodeID,
 			"ADDR":    addr,
 		},
+	}, nil
+}
+
+func CreateMembershipMessage( // This is literally same as CreateJoinACKMessage()
+	peers []Peer,
+) (Message, error) {
+	requestID, err := createRequestID()
+	if err != nil {
+		return Message{}, err
+	}
+
+	headers := map[string]string{
+		"PEER_COUNT": strconv.Itoa(len(peers)),
+	}
+
+	for i, peer := range peers {
+
+		headers[fmt.Sprintf(
+			"PEER_%d_NODE_ID",
+			i,
+		)] = peer.NodeID
+
+		headers[fmt.Sprintf(
+			"PEER_%d_ADDR",
+			i,
+		)] = peer.Addr
+	}
+
+	return Message{
+		Type:      GOSSIPMEMBERSHIP,
+		RequestID: requestID,
+		Headers:   headers,
 	}, nil
 }
 

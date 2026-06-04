@@ -37,4 +37,5 @@ func handlePong(msg transport.ParsedMessage, me *Node) {
 		me.ID,
 		msg.RequestID,
 	)
+	me.RemovePendingRequest(msg.RequestID)
 }

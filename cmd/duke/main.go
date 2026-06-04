@@ -14,19 +14,46 @@ import (
 
 func main() {
 	// Flags handling
-	selfAddress := flag.String("selfAddr", "localhost:8000", "Address of the current node, Example localhost:8000")
-	selfNodeID := flag.String("selfNodeID", "-", "Self node ID, Example: b")
-	peerAddress := flag.String("peerAddr", "localhost:8001", "Address of peer node, Example: localhost:8001")
-	peerNodeID := flag.String("peerNodeID", "b", "Peer node ID, Example: b")
+	selfAddress := flag.String("self-addr", "localhost:8000", "Address of the current node, Example localhost:8000")
+	selfNodeID := flag.String("self-node-id", "-", "Self node ID, Example: b")
+
+	isSeedNode := flag.Bool("seed-node", false, "Is this a seed node.")
+
+	peerAddress := flag.String("peer-addr", "", "Address of peer node, Example: localhost:8001")
+	peerNodeID := flag.String("peer-node-id", "", "Peer node ID, Example: b")
 	delay := flag.Int("delay", 5, "[Debug]: Initial Delay Before sending first request")
 	// FLAGS END
 	flag.Parse()
 
+	// Flags check
+	if *isSeedNode {
+		if *peerAddress != "" || *peerNodeID != "" {
+			panic("Peers can't be defined for seed node.")
+		}
+	} else {
+		if *peerAddress == "" || *peerNodeID == "" {
+			panic("One Peer should be defined for a non seed node.")
+		}
+	}
+	// Flags Check END
+
 	hostname := *selfAddress
 
-	neighbours := []cluster.Peer{{*peerNodeID, *peerAddress}}
-	// Build node here
-	me := node.Initialise(*selfNodeID, *selfAddress, neighbours)
+	var me *node.Node
+	var neighbours []cluster.Peer
+	if *isSeedNode {
+		neighbours = []cluster.Peer{}
+	} else {
+		firstPeer := cluster.NewPeer(*peerNodeID, *peerAddress)
+		neighbours = []cluster.Peer{firstPeer}
+	}
+
+	me = node.Initialise(
+		*selfNodeID,
+		*selfAddress,
+		neighbours,
+		10*time.Second,
+	)
 
 	server := transport.NewServer(hostname)
 	log.Println("Starting duke node on " + me.Hostname)
@@ -45,23 +72,36 @@ func main() {
 		}
 		fmt.Println("Done")
 	}()
-	//
-	// go func() {
-	// 	time.Sleep(time.Duration(*delay) * time.Second)
-	//
-	// 	message, _ := transport.CreatePingMessage(me.ID)
-	// 	p := neighbours[0]
-	//
-	// 	response, _ := me.SendRequestAndWait(p, message, 10*time.Second)
-	// 	fmt.Println("Done " + response.Type.String())
-	// }()
+
+	if *peerAddress != "" && !*isSeedNode {
+		time.Sleep(time.Duration(*delay) * time.Second)
+		joingRequest,
+			err := transport.CreateJoinMessage(
+			*selfNodeID,
+			*selfAddress,
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		_, err = me.SendRequestAndWait(
+			cluster.NewPeer(*peerNodeID, *peerAddress),
+			joingRequest,
+			100*time.Second,
+		)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Start gossip loop now
 
 	go func() {
-		time.Sleep(time.Duration(*delay) * time.Second)
-		message, _ := transport.CreateJoinMessage(*selfNodeID, *selfAddress)
-		p := neighbours[0]
-		response, _ := me.SendRequestAndWait(p, message, 10*time.Second)
-		fmt.Println("Done " + response.Type.String())
+		err := me.StartGossipLoop(true)
+		if err != nil {
+			log.Printf("gossip failed: %v", err)
+		}
 	}()
+
 	select {}
 }

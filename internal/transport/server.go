@@ -63,7 +63,7 @@ func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
 		return
 	}
 
-	log.Printf("raw message:\n%s", raw)
+	// log.Printf("raw message:\n%s", raw)
 
 	parsed, err := Parse(raw)
 	if err != nil {

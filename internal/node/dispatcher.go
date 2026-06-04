@@ -23,5 +23,11 @@ func Dispatch(msg transport.ParsedMessage, me *Node) {
 		handleJoin(msg, me)
 	case transport.JOIN_ACK:
 		handleJoinACK(msg, me)
+	case transport.GOSSIPMEMBERSHIP:
+		handleMembership(msg, me)
+	case transport.GET:
+		handleGet(msg, me)
+	case transport.GET_RESPONSE:
+		handleGetResponse(msg, me)
 	}
 }

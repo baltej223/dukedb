@@ -1,7 +1,11 @@
 // Package cluster takes care of the cluster itself, knows about cluster, gossip lives here.
 package cluster
 
-import "sync"
+import (
+	"fmt"
+	"strings"
+	"sync"
+)
 
 type ClusterManager struct {
 	mu sync.RWMutex
@@ -88,4 +92,25 @@ func (c *ClusterManager) Count() int {
 	defer c.mu.RUnlock()
 
 	return len(c.Neighbours)
+}
+
+func (c *ClusterManager) Dump() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	var b strings.Builder
+
+	b.WriteString("Cluster Membership:\n")
+
+	for _, peer := range c.Neighbours {
+		b.WriteString(
+			fmt.Sprintf(
+				"  %s -> %s\n",
+				peer.NodeID,
+				peer.Addr,
+			),
+		)
+	}
+
+	return b.String()
 }
