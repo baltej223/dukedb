@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -221,6 +222,13 @@ func Parse(raw string) (ParsedMessage, error) {
 		msg.Addr = headers["ADDR"]
 
 	case PUT:
+		log.Printf(
+			"[PARSE PUT] NODE_ID=%q KEY=%q",
+			headers["NODE_ID"],
+			headers["KEY"],
+		)
+
+		msg.NodeID = headers["NODE_ID"]
 		msg.Key = headers["KEY"]
 
 		if encoded := headers["VALUE_BASE64"]; encoded != "" {
@@ -232,6 +240,7 @@ func Parse(raw string) (ParsedMessage, error) {
 
 	case GET:
 		msg.Key = headers["KEY"]
+		msg.NodeID = headers["NODE_ID"]
 
 	case GET_RESPONSE:
 		msg.Found = headers["FOUND"] == "true"
@@ -247,7 +256,7 @@ func Parse(raw string) (ParsedMessage, error) {
 		msg.Success = headers["SUCCESS"] == "true"
 
 	case PUT_REJ:
-		msg.Success = headers["SUCCESS"] == "true"
+		msg.Success = headers["SUCCESS"] == "false"
 
 	case JOIN_REJECT:
 		msg.Reason = headers["REASON"]
@@ -336,6 +345,7 @@ func CreatePingMessage(
 func CreatePutMessage(
 	key string,
 	value []byte,
+	nodeID string,
 ) (Message, error) {
 	requestID, err := createRequestID()
 	if err != nil {
@@ -346,6 +356,7 @@ func CreatePutMessage(
 		Type:      PUT,
 		RequestID: requestID,
 		Headers: map[string]string{
+			"NODE_ID":      nodeID,
 			"KEY":          key,
 			"VALUE_BASE64": EncodeValue(value),
 		},
@@ -365,8 +376,8 @@ func CreateGetMessage(
 		Type:      GET,
 		RequestID: requestID,
 		Headers: map[string]string{
-			"KEY":     key,
 			"NODE_ID": nodeID,
+			"KEY":     key,
 		},
 	}, nil
 }

@@ -9,7 +9,9 @@ import (
 
 	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/node"
+	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
+	"github.com/baltej223/dukedb/scripts"
 )
 
 func main() {
@@ -22,6 +24,8 @@ func main() {
 	peerAddress := flag.String("peer-addr", "", "Address of peer node, Example: localhost:8001")
 	peerNodeID := flag.String("peer-node-id", "", "Peer node ID, Example: b")
 	delay := flag.Int("delay", 5, "[Debug]: Initial Delay Before sending first request")
+
+	forPutGet := flag.Bool("yaay", false, "pingu")
 	// FLAGS END
 	flag.Parse()
 
@@ -54,6 +58,8 @@ func main() {
 		neighbours,
 		10*time.Second,
 	)
+
+	storing.InitialiseKV()
 
 	server := transport.NewServer(hostname)
 	log.Println("Starting duke node on " + me.Hostname)
@@ -100,6 +106,115 @@ func main() {
 		err := me.StartGossipLoop(true)
 		if err != nil {
 			log.Printf("gossip failed: %v", err)
+		}
+	}()
+
+	go func() {
+		if *forPutGet {
+			for {
+				log.Printf("[TEST] starting put/get test")
+
+				time.Sleep(15 * time.Second)
+
+				log.Printf("[TEST] woke up after sleep")
+
+				peers := me.Cluster.GetPeers()
+				log.Printf("[TEST] cluster has %d peers", len(peers))
+
+				randomNode, err := scripts.ChooseRandomElements(
+					peers,
+					1,
+				)
+				if err != nil {
+					log.Printf(
+						"[TEST] failed to choose random peer: %v",
+						err,
+					)
+					return
+				}
+
+				target := randomNode[0]
+
+				log.Printf(
+					"[TEST] selected target node=%s addr=%s",
+					target.NodeID,
+					target.Addr,
+				)
+
+				putMessage, err := transport.CreatePutMessage(
+					"Name",
+					[]byte("Baltej"),
+					me.ID,
+				)
+				fmt.Println(transport.Serialize(putMessage))
+				if err != nil {
+					log.Printf(
+						"[TEST] failed to create PUT: %v",
+						err,
+					)
+					return
+				}
+
+				log.Printf(
+					"[TEST] sending PUT request_id=%s",
+					putMessage.RequestID,
+				)
+
+				putResponse, err := me.SendRequestAndWait(
+					target,
+					putMessage,
+					10*time.Second,
+				)
+				if err != nil {
+					log.Printf(
+						"[TEST] PUT failed: %v",
+						err,
+					)
+					return
+				}
+
+				log.Printf(
+					"[TEST] PUT response received type=%s request_id=%s",
+					putResponse.Type.String(),
+					putResponse.RequestID,
+				)
+
+				getReq, err := transport.CreateGetMessage(
+					"Name",
+					me.ID,
+				)
+				if err != nil {
+					log.Printf(
+						"[TEST] failed to create GET: %v",
+						err,
+					)
+					return
+				}
+
+				log.Printf(
+					"[TEST] sending GET request_id=%s",
+					getReq.RequestID,
+				)
+
+				response, err := me.SendRequestAndWait(
+					target,
+					getReq,
+					20*time.Second,
+				)
+				if err != nil {
+					log.Printf(
+						"[TEST] GET failed: %v",
+						err,
+					)
+					return
+				}
+
+				log.Printf(
+					"[TEST] GET response received request_id=%s value=%s",
+					response.RequestID,
+					string(response.Value),
+				)
+			}
 		}
 	}()
 

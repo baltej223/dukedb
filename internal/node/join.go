@@ -8,10 +8,10 @@ import (
 )
 
 func handleJoin(msg transport.ParsedMessage, me *Node) {
-	newPeer := cluster.Peer{
+	newPeer := cluster.NewPeer(
 		msg.NodeID,
 		msg.Addr,
-	}
+	)
 	me.Cluster.AddPeer(newPeer)
 
 	// Send the JOIN_ACK message here

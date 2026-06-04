@@ -1,7 +1,10 @@
 // Package storing provides the core key-value storage engine.
 package storing
 
-import "sync"
+import (
+	"log"
+	"sync"
+)
 
 type KV struct {
 	mu sync.RWMutex
@@ -20,6 +23,7 @@ func Put(key string, value []byte) {
 	KVGlobalStruct.mu.Lock()
 	defer KVGlobalStruct.mu.Unlock()
 
+	log.Printf("Putting %s->%s to KV", key, value)
 	KVGlobalStruct.m[key] = value
 }
 
@@ -28,6 +32,7 @@ func Get(key string) ([]byte, bool) {
 	defer KVGlobalStruct.mu.RUnlock()
 
 	value, ok := KVGlobalStruct.m[key]
+	log.Printf("Getting %s->%s from KV", key, value)
 	return value, ok
 }
 

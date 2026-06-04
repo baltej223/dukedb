@@ -33,10 +33,12 @@ func (n *Node) SendRequestAndWait(
 	if err != nil {
 		if errors.Is(err, ErrRequestTimedOut) {
 			n.RemovePendingRequest(msg.RequestID)
-			// Peer suspected to be unhealthy
 			n.AddSuspectedDeadPeer(peer)
 		}
+
+		return transport.ParsedMessage{}, err
 	}
+
 	n.RemovePendingRequest(msg.RequestID)
 	return response, nil
 }
