@@ -30,8 +30,9 @@ func handleMembership(msg transport.ParsedMessage, me *Node) {
 	for _, peer := range msg.Peers {
 		if _, ok := currentPeers[peer.NodeID]; !ok {
 			// The sent info not here.
-			newPeer := cluster.Peer{peer.NodeID, newPeers[peer.NodeID]}
+			newPeer := cluster.NewPeer(peer.NodeID, newPeers[peer.NodeID])
 			me.Cluster.AddPeer(newPeer)
+			me.MembershipVersion = me.MembershipVersion + 1
 		}
 	}
 }
@@ -58,7 +59,10 @@ func (me *Node) StartGossipLoop(printit bool) error {
 			return err
 		}
 
-		gossipMessage, err := transport.CreateMembershipMessage(currentNeighbours)
+		gossipMessage, err := transport.CreateMembershipMessage(
+			currentNeighbours,
+			me.MembershipVersion,
+		)
 		if err != nil {
 			return err
 		}

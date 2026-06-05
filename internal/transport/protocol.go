@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,8 +24,7 @@ const (
 
 	GET
 	GET_RESPONSE
-
-	GOSSIP
+	GET_REJ
 
 	JOIN
 	JOIN_ACK
@@ -50,8 +48,8 @@ func (m MessageType) String() string {
 		return "GET"
 	case GET_RESPONSE:
 		return "GET_RESPONSE"
-	case GOSSIP:
-		return "GOSSIP"
+	case GET_REJ:
+		return "GET_REJECT"
 	case JOIN:
 		return "JOIN"
 	case JOIN_ACK:
@@ -81,8 +79,6 @@ func ParseMessageType(s string) (MessageType, error) {
 		return GET, nil
 	case "GET_RESPONSE":
 		return GET_RESPONSE, nil
-	case "GOSSIP":
-		return GOSSIP, nil
 	case "JOIN":
 		return JOIN, nil
 	case "JOIN_ACK":
@@ -108,8 +104,9 @@ type ParsedMessage struct {
 	Type      MessageType
 	RequestID string
 
-	NodeID string
-	Addr   string
+	MembershipVersion int
+	NodeID            string
+	Addr              string
 
 	Key   string
 	Value []byte
@@ -120,6 +117,9 @@ type ParsedMessage struct {
 	Reason string
 
 	Peers []Peer
+
+	SuggestedOwner string
+	SuggestedAddr  string
 }
 
 func (PM ParsedMessage) String() string {
@@ -222,14 +222,14 @@ func Parse(raw string) (ParsedMessage, error) {
 		msg.Addr = headers["ADDR"]
 
 	case PUT:
-		log.Printf(
-			"[PARSE PUT] NODE_ID=%q KEY=%q",
-			headers["NODE_ID"],
-			headers["KEY"],
-		)
-
 		msg.NodeID = headers["NODE_ID"]
 		msg.Key = headers["KEY"]
+
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
 
 		if encoded := headers["VALUE_BASE64"]; encoded != "" {
 			msg.Value, err = DecodeValue(encoded)
@@ -239,6 +239,11 @@ func Parse(raw string) (ParsedMessage, error) {
 		}
 
 	case GET:
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
 		msg.Key = headers["KEY"]
 		msg.NodeID = headers["NODE_ID"]
 
@@ -256,15 +261,34 @@ func Parse(raw string) (ParsedMessage, error) {
 		msg.Success = headers["SUCCESS"] == "true"
 
 	case PUT_REJ:
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
+
+		msg.SuggestedOwner = headers["SUGGESTED_OWNER"]
+		msg.SuggestedAddr = headers["SUGGESTED_ADDR"]
+
 		msg.Success = headers["SUCCESS"] == "false"
 
 	case JOIN_REJECT:
 		msg.Reason = headers["REASON"]
 
 	case JOIN_ACK:
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
 		msg.Peers, _ = parsePeers(headers)
 
 	case GOSSIPMEMBERSHIP:
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
 		msg.Peers, _ = parsePeers(headers) // Both of these messages looks exactly the same
 
 	}
@@ -346,6 +370,7 @@ func CreatePutMessage(
 	key string,
 	value []byte,
 	nodeID string,
+	membershipVersion int,
 ) (Message, error) {
 	requestID, err := createRequestID()
 	if err != nil {
@@ -356,9 +381,10 @@ func CreatePutMessage(
 		Type:      PUT,
 		RequestID: requestID,
 		Headers: map[string]string{
-			"NODE_ID":      nodeID,
-			"KEY":          key,
-			"VALUE_BASE64": EncodeValue(value),
+			"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
+			"NODE_ID":            nodeID,
+			"KEY":                key,
+			"VALUE_BASE64":       EncodeValue(value),
 		},
 	}, nil
 }
@@ -366,6 +392,7 @@ func CreatePutMessage(
 func CreateGetMessage(
 	key string,
 	nodeID string,
+	membershipVersion int,
 ) (Message, error) {
 	requestID, err := createRequestID()
 	if err != nil {
@@ -376,8 +403,9 @@ func CreateGetMessage(
 		Type:      GET,
 		RequestID: requestID,
 		Headers: map[string]string{
-			"NODE_ID": nodeID,
-			"KEY":     key,
+			"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
+			"NODE_ID":            nodeID,
+			"KEY":                key,
 		},
 	}, nil
 }
@@ -403,6 +431,7 @@ func CreateJoinMessage(
 
 func CreateMembershipMessage( // This is literally same as CreateJoinACKMessage()
 	peers []Peer,
+	membershipVersion int,
 ) (Message, error) {
 	requestID, err := createRequestID()
 	if err != nil {
@@ -410,7 +439,8 @@ func CreateMembershipMessage( // This is literally same as CreateJoinACKMessage(
 	}
 
 	headers := map[string]string{
-		"PEER_COUNT": strconv.Itoa(len(peers)),
+		"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
+		"PEER_COUNT":         strconv.Itoa(len(peers)),
 	}
 
 	for i, peer := range peers {
@@ -467,12 +497,17 @@ func CreatePutACKMessage(
 
 func CreatePutREJMessage(
 	requestID string,
+	suggestedOwner cluster.Peer,
+	membershipVersion int, // current (my) membership version
 ) Message {
 	return Message{
 		Type:      PUT_REJ,
 		RequestID: requestID,
 		Headers: map[string]string{
-			"SUCCESS": "false",
+			"SUCCESS":            "false",
+			"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
+			"SUGGESTED_OWNER":    suggestedOwner.NodeID,
+			"SUGGESTED_ADDR":     suggestedOwner.Addr,
 		},
 	}
 }
@@ -492,12 +527,31 @@ func CreateGetResponseMessage(
 	}
 }
 
+func CreateGetREJMessage(
+	requestID string,
+	suggestedOwner cluster.Peer,
+	membershipVersion int, // current (my) membership version
+) Message {
+	return Message{
+		Type:      GET_REJ,
+		RequestID: requestID,
+		Headers: map[string]string{
+			"SUCCESS":            "false",
+			"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
+			"SUGGESTED_OWNER":    suggestedOwner.NodeID,
+			"SUGGESTED_ADDR":     suggestedOwner.Addr,
+		},
+	}
+}
+
 func CreateJoinACKMessage(
 	requestID string,
 	peers []Peer,
+	membershipVersion int,
 ) Message {
 	headers := map[string]string{
-		"PEER_COUNT": strconv.Itoa(len(peers)),
+		"PEER_COUNT":         strconv.Itoa(len(peers)),
+		"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
 	}
 
 	for i, peer := range peers {

@@ -16,7 +16,11 @@ func handleJoin(msg transport.ParsedMessage, me *Node) {
 
 	// Send the JOIN_ACK message here
 	currentPeer := me.Cluster.GetPeers()
-	joinACK := transport.CreateJoinACKMessage(msg.RequestID, currentPeer)
+	joinACK := transport.CreateJoinACKMessage(
+		msg.RequestID,
+		currentPeer,
+		me.MembershipVersion,
+	)
 	transport.SendMessage(newPeer, joinACK)
 }
 
@@ -29,6 +33,9 @@ func handleJoinACK(msg transport.ParsedMessage, me *Node) {
 			msg.RequestID,
 		)
 		return
+	}
+	if msg.MembershipVersion > me.MembershipVersion {
+		me.MembershipVersion = msg.MembershipVersion
 	}
 
 	req.ResultChan <- msg

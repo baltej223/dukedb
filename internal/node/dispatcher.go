@@ -29,6 +29,8 @@ func Dispatch(msg transport.ParsedMessage, me *Node) {
 		handleGet(msg, me)
 	case transport.GET_RESPONSE:
 		handleGetResponse(msg, me)
+	case transport.GET_REJ:
+		handleGetREJ(msg, me)
 	case transport.PUT:
 		handlePut(msg, me)
 	case transport.PUT_ACK:

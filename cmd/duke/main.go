@@ -110,111 +110,132 @@ func main() {
 	}()
 
 	go func() {
-		if *forPutGet {
-			for {
-				log.Printf("[TEST] starting put/get test")
+		if !*forPutGet {
+			return
+		}
 
-				time.Sleep(15 * time.Second)
+		testCounter := 0
 
-				log.Printf("[TEST] woke up after sleep")
+		for {
 
-				peers := me.Cluster.GetPeers()
-				log.Printf("[TEST] cluster has %d peers", len(peers))
+			time.Sleep(15 * time.Second)
 
-				randomNode, err := scripts.ChooseRandomElements(
-					peers,
-					1,
-				)
-				if err != nil {
-					log.Printf(
-						"[TEST] failed to choose random peer: %v",
-						err,
-					)
-					return
-				}
+			peers := me.Cluster.GetPeers()
 
-				target := randomNode[0]
-
+			randomNode, err := scripts.ChooseRandomElements(
+				peers,
+				1,
+			)
+			if err != nil {
 				log.Printf(
-					"[TEST] selected target node=%s addr=%s",
-					target.NodeID,
-					target.Addr,
+					"[TEST] failed to choose random peer: %v",
+					err,
 				)
+				continue
+			}
 
-				putMessage, err := transport.CreatePutMessage(
-					"Name",
-					[]byte("Baltej"),
-					me.ID,
-				)
-				fmt.Println(transport.Serialize(putMessage))
-				if err != nil {
-					log.Printf(
-						"[TEST] failed to create PUT: %v",
-						err,
-					)
-					return
-				}
+			target := randomNode[0]
 
+			key := fmt.Sprintf(
+				"test-key-%d",
+				testCounter,
+			)
+
+			expectedValue := fmt.Sprintf(
+				"test-value-%d",
+				testCounter,
+			)
+
+			log.Printf(
+				"[TEST %d] PUT key=%s value=%s target=%s",
+				testCounter,
+				key,
+				expectedValue,
+				target.NodeID,
+			)
+
+			putMessage, err := transport.CreatePutMessage(
+				key,
+				[]byte(expectedValue),
+				me.ID,
+				me.MembershipVersion,
+			)
+			if err != nil {
 				log.Printf(
-					"[TEST] sending PUT request_id=%s",
-					putMessage.RequestID,
+					"[TEST %d] failed creating PUT: %v",
+					testCounter,
+					err,
 				)
+				continue
+			}
 
-				putResponse, err := me.SendRequestAndWait(
-					target,
-					putMessage,
-					10*time.Second,
-				)
-				if err != nil {
-					log.Printf(
-						"[TEST] PUT failed: %v",
-						err,
-					)
-					return
-				}
-
+			putResp, err := me.SendRequestAndWait(
+				target,
+				putMessage,
+				10*time.Second,
+			)
+			if err != nil {
 				log.Printf(
-					"[TEST] PUT response received type=%s request_id=%s",
-					putResponse.Type.String(),
-					putResponse.RequestID,
+					"[TEST %d] PUT failed: %v",
+					testCounter,
+					err,
 				)
+				continue
+			}
 
-				getReq, err := transport.CreateGetMessage(
-					"Name",
-					me.ID,
-				)
-				if err != nil {
-					log.Printf(
-						"[TEST] failed to create GET: %v",
-						err,
-					)
-					return
-				}
+			log.Printf(
+				"[TEST %d] PUT response=%s",
+				testCounter,
+				putResp.Type.String(),
+			)
 
+			getReq, err := transport.CreateGetMessage(
+				key,
+				me.ID,
+				me.MembershipVersion,
+			)
+			if err != nil {
 				log.Printf(
-					"[TEST] sending GET request_id=%s",
-					getReq.RequestID,
+					"[TEST %d] failed creating GET: %v",
+					testCounter,
+					err,
 				)
+				continue
+			}
 
-				response, err := me.SendRequestAndWait(
-					target,
-					getReq,
-					20*time.Second,
-				)
-				if err != nil {
-					log.Printf(
-						"[TEST] GET failed: %v",
-						err,
-					)
-					return
-				}
-
+			getResp, err := me.SendRequestAndWait(
+				target,
+				getReq,
+				20*time.Second,
+			)
+			if err != nil {
 				log.Printf(
-					"[TEST] GET response received request_id=%s value=%s",
-					response.RequestID,
-					string(response.Value),
+					"[TEST %d] GET failed: %v",
+					testCounter,
+					err,
+				)
+				continue
+			}
+
+			actualValue := string(getResp.Value)
+
+			if actualValue != expectedValue {
+				log.Printf(
+					"[TEST %d] MISMATCH expected=%q got=%q",
+					testCounter,
+					expectedValue,
+					actualValue,
+				)
+			} else {
+				log.Printf(
+					"[TEST %d] SUCCESS key=%s value=%s",
+					testCounter,
+					key,
+					actualValue,
 				)
 			}
+
+			testCounter++
 		}
 	}()
 

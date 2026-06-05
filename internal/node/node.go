@@ -23,7 +23,8 @@ type Node struct {
 	SuspectedDeadPeersMu sync.RWMutex
 	Cluster              *cluster.ClusterManager
 
-	GossipLoopTime time.Duration
+	GossipLoopTime    time.Duration
+	MembershipVersion int
 	// Transport 	 *transport.Transport
 	// Storage     *storage.Engine
 	// Router      *routing.Router
@@ -32,7 +33,9 @@ type Node struct {
 
 type PendingRequest struct {
 	CreatedAt time.Time
-	Type      transport.MessageType
+
+	Message    transport.Message
+	RetryCount int
 
 	ResultChan chan transport.ParsedMessage
 }
@@ -60,7 +63,8 @@ func Initialise(
 			peers,
 		),
 
-		GossipLoopTime: GossipLoopTime,
+		GossipLoopTime:    GossipLoopTime,
+		MembershipVersion: 0,
 	}
 }
 
@@ -74,18 +78,26 @@ func (n *Node) AddPendingRequest(
 	n.PendingRequests[requestID] = req
 }
 
-func (n *Node) RemovePendingRequest(requestID string) {
+func (n *Node) RemovePendingRequest(
+	requestID string,
+) {
 	n.PendingMu.Lock()
 	defer n.PendingMu.Unlock()
 
-	delete(n.PendingRequests, requestID)
+	delete(
+		n.PendingRequests,
+		requestID,
+	)
 }
 
-func (n *Node) GetPendingRequest(requestID string) (*PendingRequest, bool) {
+func (n *Node) GetPendingRequest(
+	requestID string,
+) (*PendingRequest, bool) {
 	n.PendingMu.RLock()
 	defer n.PendingMu.RUnlock()
 
 	req, ok := n.PendingRequests[requestID]
+
 	return req, ok
 }
 
@@ -93,7 +105,9 @@ func (n *Node) WaitForPendingRequest(
 	requestID string,
 	timeout time.Duration,
 ) (transport.ParsedMessage, error) {
-	req, ok := n.GetPendingRequest(requestID)
+	req, ok := n.GetPendingRequest(
+		requestID,
+	)
 	if !ok {
 		return transport.ParsedMessage{},
 			fmt.Errorf(

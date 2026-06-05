@@ -17,28 +17,49 @@ func (n *Node) SendRequestAndWait(
 	msg transport.Message,
 	timeout time.Duration,
 ) (transport.ParsedMessage, error) {
+	defer n.RemovePendingRequest(
+		msg.RequestID,
+	)
+
 	pendingRequest := PendingRequest{
-		time.Now(),
-		msg.Type,
-		make(chan transport.ParsedMessage),
+		CreatedAt: time.Now(),
+		Message:   msg,
+		ResultChan: make(
+			chan transport.ParsedMessage,
+		),
 	}
 
-	n.AddPendingRequest(msg.RequestID, &pendingRequest)
-	err := transport.SendMessage(peer, msg)
+	n.AddPendingRequest(
+		msg.RequestID,
+		&pendingRequest,
+	)
+
+	err := transport.SendMessage(
+		peer,
+		msg,
+	)
 	if err != nil {
 		return transport.ParsedMessage{}, err
 	}
 
-	response, err := n.WaitForPendingRequest(msg.RequestID, timeout)
+	response, err := n.WaitForPendingRequest(
+		msg.RequestID,
+		timeout,
+	)
 	if err != nil {
-		if errors.Is(err, ErrRequestTimedOut) {
-			n.RemovePendingRequest(msg.RequestID)
-			n.AddSuspectedDeadPeer(peer)
+
+		if errors.Is(
+			err,
+			ErrRequestTimedOut,
+		) {
+
+			n.AddSuspectedDeadPeer(
+				peer,
+			)
 		}
 
-		return transport.ParsedMessage{}, err
+		return transport.ParsedMessage{},
+			err
 	}
-
-	n.RemovePendingRequest(msg.RequestID)
 	return response, nil
 }

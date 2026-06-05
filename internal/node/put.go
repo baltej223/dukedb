@@ -2,7 +2,9 @@ package node
 
 import (
 	"log"
+	"time"
 
+	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/routing"
 	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
@@ -19,112 +21,39 @@ func handlePut(msg transport.ParsedMessage, me *Node) {
 
 	key := msg.Key
 
-	log.Printf(
-		"[node=%s] PUT calling FindOwner(%s)",
-		me.ID,
-		key,
-	)
-
 	keyOwner := routing.FindOwner(key, me.AllNodesSort())
-
-	log.Printf(
-		"[node=%s] PUT owner=%s self=%s",
-		me.ID,
-		keyOwner.NodeID,
-		me.ID,
-	)
-
 	if keyOwner.NodeID == me.ID {
-		log.Printf(
-			"[node=%s] PUT key=%s sender=%s owner=%s",
-			me.ID,
-			key,
-			msg.NodeID,
-			keyOwner.NodeID,
-		)
 
 		storing.Put(key, msg.Value)
 
-		log.Printf(
-			"[node=%s] PUT stored key=%s",
-			me.ID,
-			key,
-		)
-
 		response := transport.CreatePutACKMessage(msg.RequestID)
 
-		log.Printf(
-			"[node=%s] PUT_ACK created request_id=%s",
-			me.ID,
-			msg.RequestID,
-		)
-
 		peerToReply, ok := me.Cluster.GetPeer(msg.NodeID)
 		if !ok {
-			log.Printf(
-				"[node=%s] PUT_ACK failed: sender %q not found in cluster",
-				me.ID,
-				msg.NodeID,
-			)
 			return
 		}
-
-		log.Printf(
-			"[node=%s] PUT_ACK sending to node=%s addr=%s",
-			me.ID,
-			peerToReply.NodeID,
-			peerToReply.Addr,
-		)
-
 		err := transport.SendMessage(peerToReply, response)
 		if err != nil {
-			log.Printf(
-				"[node=%s] PUT_ACK send failed: %v",
-				me.ID,
-				err,
-			)
 			return
 		}
-
-		log.Printf(
-			"[node=%s] PUT_ACK sent successfully",
-			me.ID,
-		)
 
 	} else {
-		log.Printf(
-			"[node=%s] PUT rejected owner=%s self=%s",
-			me.ID,
-			keyOwner.NodeID,
-			me.ID,
+		response := transport.CreatePutREJMessage(
+			msg.RequestID,
+			keyOwner,
+			me.MembershipVersion,
 		)
-
-		response := transport.CreatePutREJMessage(msg.RequestID)
 
 		peerToReply, ok := me.Cluster.GetPeer(msg.NodeID)
 		if !ok {
-			log.Printf(
-				"[node=%s] PUT_REJ failed: sender %q not found in cluster",
-				me.ID,
-				msg.NodeID,
-			)
 			return
 		}
 
 		err := transport.SendMessage(peerToReply, response)
 		if err != nil {
-			log.Printf(
-				"[node=%s] PUT_REJ send failed: %v",
-				me.ID,
-				err,
-			)
 			return
 		}
 
-		log.Printf(
-			"[node=%s] PUT_REJ sent successfully",
-			me.ID,
-		)
 	}
 }
 
@@ -142,6 +71,32 @@ func handlePutREJ(msg transport.ParsedMessage, me *Node) {
 	if !ok {
 		return
 	}
-	req.ResultChan <- msg
+	var finalResponse transport.ParsedMessage
+
+	if msg.MembershipVersion > me.MembershipVersion {
+		// schedule membership sync
+	}
+	if msg.SuggestedOwner != "" {
+		newPeerToTry := cluster.NewPeer(msg.SuggestedOwner, msg.SuggestedAddr)
+		if !(me.Cluster.HasPeer(newPeerToTry.NodeID)) {
+			me.Cluster.AddPeer(newPeerToTry)
+		}
+		thisRequest, ok := me.GetPendingRequest(msg.RequestID)
+		if !ok {
+			finalResponse = msg
+		}
+		newMessage := thisRequest.Message
+
+		getResponseFromNewPeer, err := me.SendRequestAndWait(newPeerToTry, newMessage, 30*time.Second)
+		if err != nil {
+			finalResponse = msg
+		}
+		finalResponse = getResponseFromNewPeer
+	} else {
+		finalResponse = msg
+	}
+
+	req.ResultChan <- finalResponse
+
 	me.RemovePendingRequest(msg.RequestID)
 }
