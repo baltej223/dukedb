@@ -221,17 +221,3 @@ while keeping the implementation understandable and built from first principles.
 
 Built as a learning project to understand how distributed systems actually work beneath the abstractions.
 
-# TODO
-
-- Implement membership sync request/response
-  like
-
-```
-MEMBERSHIP_SYNC_REQ
-
-and
-
-MEMBERSHIP_SYNC_RES
-```
-
-- Add redirect count.
