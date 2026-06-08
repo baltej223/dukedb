@@ -7,161 +7,85 @@ DukeDB is an experiment in understanding distributed systems by implementing the
 The project focuses on membership management, request routing, gossip-based state propagation, failure handling, and eventually data replication and recovery.
 
 ```
-2026/06/05 14:13:12 Starting duke node on localhost:8000
-2026/06/05 14:13:12 Starting duke node on localhost:8002
-2026/06/05 14:13:12 Starting duke node on localhost:8001
-tcp server listening on localhost:8002
-tcp server listening on localhost:8000
-tcp server listening on localhost:8001
-Sending message to localhost:8000
-2026/06/05 14:13:17 new connection
-2026/06/05 14:13:17 parsed type=JOIN request_id=7ysXYsmkfZtyNDVhxCFa
-2026/06/05 14:13:17 [node=a] dispatching JOIN request_id=7ysXYsmkfZtyNDVhxCFa
-Sending message to localhost:8002
-2026/06/05 14:13:17 new connection
-2026/06/05 14:13:17 parsed type=JOIN_ACK request_id=7ysXYsmkfZtyNDVhxCFa
-2026/06/05 14:13:17 [node=c] dispatching JOIN_ACK request_id=7ysXYsmkfZtyNDVhxCFa
-2026/06/05 14:13:17 [node=c] pending request fulfilled request_id=7ysXYsmkfZtyNDVhxCFa
-Sending message to localhost:8000
-2026/06/05 14:13:17 new connection
-2026/06/05 14:13:17 parsed type=GOSSIP_MEMBERSHIP request_id=pkammPsqBxWB2LZLzcaK
-2026/06/05 14:13:17 [node=a] dispatching GOSSIP_MEMBERSHIP request_id=pkammPsqBxWB2LZLzcaK
-2026/06/05 14:13:17 [node=c] gossiped membership (1 peers) to a
-Cluster Membership:
-  a -> localhost:8000
-  c -> localhost:8002
+                    ┌─────────────────────┐
+                    │     Client App      │
+                    │  JS / curl / SDK    │
+                    └──────────┬──────────┘
+                               │ HTTP
+                               ▼
 
-Sending message to localhost:8000
-2026/06/05 14:13:20 new connection
-2026/06/05 14:13:20 parsed type=JOIN request_id=0JMuZ3f28NQI531hpeci
-2026/06/05 14:13:20 [node=a] dispatching JOIN request_id=0JMuZ3f28NQI531hpeci
-Sending message to localhost:8001
-2026/06/05 14:13:20 new connection
-2026/06/05 14:13:20 parsed type=JOIN_ACK request_id=0JMuZ3f28NQI531hpeci
-2026/06/05 14:13:20 [node=b] dispatching JOIN_ACK request_id=0JMuZ3f28NQI531hpeci
-2026/06/05 14:13:20 [node=b] pending request fulfilled request_id=0JMuZ3f28NQI531hpeci
-Cluster Membership:
-  b -> localhost:8001
-  a -> localhost:8000
-  c -> localhost:8002
+                    ┌─────────────────────┐
+                    │      Duke API       │
+                    │      Port 9000      │
+                    └──────────┬──────────┘
+                               │
+                               ▼
 
-Sending message to localhost:8002
-2026/06/05 14:13:22 new connection
-2026/06/05 14:13:22 [node=a] gossiped membership (1 peers) to c
-Cluster Membership:
-  c -> localhost:8002
-  a -> localhost:8000
-  b -> localhost:8001
+                    ┌─────────────────────┐
+                    │      Duke Node      │
+                    │       Node A        │
+                    │      Port 8000      │
+                    └──────────┬──────────┘
+                               │
+                ┌──────────────┼──────────────┐
+                │              │              │
+                ▼              ▼              ▼
 
-2026/06/05 14:13:22 parsed type=GOSSIP_MEMBERSHIP request_id=WkHcXG0janRzRUywHokh
-2026/06/05 14:13:22 [node=c] dispatching GOSSIP_MEMBERSHIP request_id=WkHcXG0janRzRUywHokh
-2026/06/05 14:13:27 [TEST 0] PUT key=test-key-0 value=test-value-0 target=b
-Sending message to localhost:8001
-2026/06/05 14:13:27 new connection
-2026/06/05 14:13:27 parsed type=PUT request_id=ScQHPWRZboMJYdJjwinE
-2026/06/05 14:13:27 [node=b] dispatching PUT request_id=ScQHPWRZboMJYdJjwinE
-2026/06/05 14:13:27 [node=b] PUT ENTER request_id=ScQHPWRZboMJYdJjwinE key=test-key-0 sender=a
-2026/06/05 14:13:27 Putting test-key-0->test-value-0 to KV
-Sending message to localhost:8000
-2026/06/05 14:13:27 new connection
-2026/06/05 14:13:27 parsed type=PUT_ACK request_id=ScQHPWRZboMJYdJjwinE
-2026/06/05 14:13:27 [node=a] dispatching PUT_ACK request_id=ScQHPWRZboMJYdJjwinE
-2026/06/05 14:13:27 [TEST 0] PUT response=PUT_ACK
-Sending message to localhost:8001
-2026/06/05 14:13:27 new connection
-2026/06/05 14:13:27 parsed type=GET request_id=WA2scP0UnCNBkyKJ7wag
-2026/06/05 14:13:27 [node=b] dispatching GET request_id=WA2scP0UnCNBkyKJ7wag
-2026/06/05 14:13:27 Getting test-key-0->test-value-0 from KV
-Sending message to localhost:8000
-2026/06/05 14:13:27 new connection
-2026/06/05 14:13:27 parsed type=GET_RESPONSE request_id=WA2scP0UnCNBkyKJ7wag
-2026/06/05 14:13:27 [node=a] dispatching GET_RESPONSE request_id=WA2scP0UnCNBkyKJ7wag
-2026/06/05 14:13:27 [node=a] pending request fulfilled request_id=WA2scP0UnCNBkyKJ7wag
-2026/06/05 14:13:27 [TEST 0] SUCCESS key=test-key-0 value=test-value-0
-Sending message to localhost:8000
-2026/06/05 14:13:27 new connection
-2026/06/05 14:13:27 parsed type=GOSSIP_MEMBERSHIP request_id=RI25HysbPXBvGp6IBIAo
-2026/06/05 14:13:27 [node=c] gossiped membership (1 peers) to a
-2026/06/05 14:13:27 [node=a] dispatching GOSSIP_MEMBERSHIP request_id=RI25HysbPXBvGp6IBIAo
-Cluster Membership:
-  a -> localhost:8000
-  c -> localhost:8002
-  b -> localhost:8001
+        ┌────────────┐  ┌────────────┐  ┌────────────┐
+        │  Node A    │  │  Node B    │  │  Node C    │
+        │ localhost  │  │ localhost  │  │ localhost  │
+        │    8000    │  │    8001    │  │    8002    │
+        └─────┬──────┘  └─────┬──────┘  └─────┬──────┘
+              │               │               │
+              └─────── Gossip / Membership ───┘
 
-Cluster Membership:
-  a -> localhost:8000
-  c -> localhost:8002
-  b -> localhost:8001
+-----------------------------------------------------------
+            
+            ┌────────────────────────────────────┐
+            │             Duke Node              │
+            ├────────────────────────────────────┤
+            │ HTTP/API Layer                     │
+            ├────────────────────────────────────┤
+            │ PUT() / GET()                      │
+            ├────────────────────────────────────┤
+            │ Routing                            │
+            │   FindOwner(key)                   │
+            ├────────────────────────────────────┤
+            │ Pending Requests                   │
+            │   RequestID → ResultChan           │
+            ├────────────────────────────────────┤
+            │ Membership State                   │
+            │   Peers                            │
+            │   MembershipVersion                │
+            ├────────────────────────────────────┤
+            │ Transport                          │
+            │   TCP Messages                     │
+            ├────────────────────────────────────┤
+            │ Local KV Store                     │
+            └────────────────────────────────────┘
 
-Cluster Membership:
-  a -> localhost:8000
-  b -> localhost:8001
-  c -> localhost:8002
+------------------------------------------------------------
+                  ┌───────────────────┐
+                  │    Duke Client    │
+                  │  JS SDK / curl    │
+                  └─────────┬─────────┘
+                            │
+                            ▼
 
-Sending message to localhost:8001
-2026/06/05 14:13:37 new connection
-2026/06/05 14:13:37 [node=c] gossiped membership (1 peers) to b
-Cluster Membership:
-  a -> localhost:8000
-  c -> localhost:8002
-  b -> localhost:8001
+         ┌─────────────────────────────────────┐
+         │           Duke API Layer            │
+         │  HTTP / JSON Interface for Users    │
+         └─────────────────┬───────────────────┘
+                           │
+                           ▼
 
-2026/06/05 14:13:37 parsed type=GOSSIP_MEMBERSHIP request_id=SMzP6qNLnZirP02fSvEQ
-2026/06/05 14:13:37 [node=b] dispatching GOSSIP_MEMBERSHIP request_id=SMzP6qNLnZirP02fSvEQ
-Cluster Membership:
-  a -> localhost:8000
-  c -> localhost:8002
-  b -> localhost:8001
-
-Sending message to localhost:8002
-2026/06/05 14:13:42 [TEST 1] PUT key=test-key-1 value=test-value-1 target=b
-Sending message to localhost:8001
-2026/06/05 14:13:42 new connection
-2026/06/05 14:13:42 parsed type=PUT request_id=1VbnLyMpajrKRyTArWLe
-2026/06/05 14:13:42 [node=b] dispatching PUT request_id=1VbnLyMpajrKRyTArWLe
-2026/06/05 14:13:42 [node=b] PUT ENTER request_id=1VbnLyMpajrKRyTArWLe key=test-key-1 sender=a
-2026/06/05 14:13:42 Putting test-key-1->test-value-1 to KV
-Sending message to localhost:8000
-2026/06/05 14:13:42 new connection
-2026/06/05 14:13:42 [node=a] gossiped membership (2 peers) to c
-2026/06/05 14:13:42 parsed type=GOSSIP_MEMBERSHIP request_id=J2Kf0km4HThha7OHcMWV
-Sending message to localhost:8001
-2026/06/05 14:13:42 [node=c] dispatching GOSSIP_MEMBERSHIP request_id=J2Kf0km4HThha7OHcMWV
-2026/06/05 14:13:42 [node=a] gossiped membership (2 peers) to b
-Cluster Membership:
-  c -> localhost:8002
-  a -> localhost:8000
-  b -> localhost:8001
-
-2026/06/05 14:13:42 new connection
-2026/06/05 14:13:42 parsed type=GOSSIP_MEMBERSHIP request_id=J2Kf0km4HThha7OHcMWV
-2026/06/05 14:13:42 [node=b] dispatching GOSSIP_MEMBERSHIP request_id=J2Kf0km4HThha7OHcMWV
-2026/06/05 14:13:42 new connection
-2026/06/05 14:13:42 parsed type=PUT_ACK request_id=1VbnLyMpajrKRyTArWLe
-2026/06/05 14:13:42 [node=a] dispatching PUT_ACK request_id=1VbnLyMpajrKRyTArWLe
-2026/06/05 14:13:42 [TEST 1] PUT response=PUT_ACK
-Sending message to localhost:8001
-2026/06/05 14:13:42 new connection
-2026/06/05 14:13:42 parsed type=GET request_id=xq4w6BvFDbisNCtCZxLo
-2026/06/05 14:13:42 [node=b] dispatching GET request_id=xq4w6BvFDbisNCtCZxLo
-2026/06/05 14:13:42 Getting test-key-1->test-value-1 from KV
-Sending message to localhost:8000
-2026/06/05 14:13:42 new connection
-2026/06/05 14:13:42 parsed type=GET_RESPONSE request_id=xq4w6BvFDbisNCtCZxLo
-2026/06/05 14:13:42 [node=a] dispatching GET_RESPONSE request_id=xq4w6BvFDbisNCtCZxLo
-2026/06/05 14:13:42 [node=a] pending request fulfilled request_id=xq4w6BvFDbisNCtCZxLo
-2026/06/05 14:13:42 [TEST 1] SUCCESS key=test-key-1 value=test-value-1
-Sending message to localhost:8001
-2026/06/05 14:13:47 [node=c] gossiped membership (2 peers) to b
-Cluster Membership:
-  a -> localhost:8000
-  c -> localhost:8002
-  b -> localhost:8001
-
-2026/06/05 14:13:47 new connection
-2026/06/05 14:13:47 parsed type=GOSSIP_MEMBERSHIP request_id=KdjJE9e1k0CrIwIoGnfF
-2026/06/05 14:13:47 [node=b] dispatching GOSSIP_MEMBERSHIP request_id=KdjJE9e1k0CrIwIoGnfF
-
+         ┌─────────────────────────────────────┐
+         │             Duke Cluster            │
+         │                                     │
+         │   Node A  ←→  Node B  ←→  Node C    │
+         │                                     │
+         │ Membership │ Routing │ Storage      │
+         └─────────────────────────────────────┘
 ```
 
 ## Why?
