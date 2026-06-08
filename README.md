@@ -16,7 +16,7 @@ The project focuses on membership management, request routing, gossip-based stat
 
                     ┌─────────────────────┐
                     │      Duke API       │
-                    │      Port 9000      │
+                    │                     │
                     └──────────┬──────────┘
                                │
                                ▼
@@ -24,7 +24,7 @@ The project focuses on membership management, request routing, gossip-based stat
                     ┌─────────────────────┐
                     │      Duke Node      │
                     │       Node A        │
-                    │      Port 8000      │
+                    │                     │
                     └──────────┬──────────┘
                                │
                 ┌──────────────┼──────────────┐
@@ -34,7 +34,7 @@ The project focuses on membership management, request routing, gossip-based stat
         ┌────────────┐  ┌────────────┐  ┌────────────┐
         │  Node A    │  │  Node B    │  │  Node C    │
         │ localhost  │  │ localhost  │  │ localhost  │
-        │    8000    │  │    8001    │  │    8002    │
+        │            │  │            │  │            │
         └─────┬──────┘  └─────┬──────┘  └─────┬──────┘
               │               │               │
               └─────── Gossip / Membership ───┘
