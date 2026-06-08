@@ -29,7 +29,10 @@ const (
 	JOIN
 	JOIN_ACK
 	JOIN_REJECT
+
 	GOSSIPMEMBERSHIP
+	SYNC_MEMBERSHIP
+	SYNC_MEMBERSHIP_RESPONSE
 )
 
 func (m MessageType) String() string {
@@ -58,6 +61,10 @@ func (m MessageType) String() string {
 		return "JOIN_REJECT"
 	case GOSSIPMEMBERSHIP:
 		return "GOSSIP_MEMBERSHIP"
+	case SYNC_MEMBERSHIP:
+		return "SYNC_MEMBERSHIP"
+	case SYNC_MEMBERSHIP_RESPONSE:
+		return "SYNC_MEMBERSHIP_RESPONSE"
 	default:
 		return "UNKNOWN"
 	}
@@ -87,6 +94,10 @@ func ParseMessageType(s string) (MessageType, error) {
 		return JOIN_REJECT, nil
 	case "GOSSIP_MEMBERSHIP":
 		return GOSSIPMEMBERSHIP, nil
+	case "SYNC_MEMBERSHIP":
+		return SYNC_MEMBERSHIP, nil
+	case "SYNC_MEMBERSHIP_RESPONSE":
+		return SYNC_MEMBERSHIP_RESPONSE, nil
 	default:
 		return 0, fmt.Errorf("unknown message type: %s", s)
 	}
@@ -291,6 +302,18 @@ func Parse(raw string) (ParsedMessage, error) {
 		msg.MembershipVersion = version
 		msg.Peers, _ = parsePeers(headers) // Both of these messages looks exactly the same
 
+	case SYNC_MEMBERSHIP:
+		msg.NodeID = headers["NODE_ID"]
+
+	case SYNC_MEMBERSHIP_RESPONSE:
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
+		msg.Peers, _ = parsePeers(headers)
+		// It again looks exactly same as GOSSIPMEMBERSHIP and JOIN ACK
+
 	}
 
 	return msg, nil
@@ -463,6 +486,23 @@ func CreateMembershipMessage( // This is literally same as CreateJoinACKMessage(
 	}, nil
 }
 
+func CreateSYNCMembershipMessage(
+	nodeID string,
+) (Message, error) {
+	requestID, err := createRequestID()
+	if err != nil {
+		return Message{}, err
+	}
+
+	return Message{
+		Type:      SYNC_MEMBERSHIP,
+		RequestID: requestID,
+		Headers: map[string]string{
+			"NODE_ID": nodeID,
+		},
+	}, nil
+}
+
 // ----------------------------------------------------
 // RESPONSE BUILDERS
 // ----------------------------------------------------
@@ -585,4 +625,35 @@ func CreateJoinREJECTMessage(
 			"REASON": reason,
 		},
 	}
+}
+
+func CreateSYNCMebershipResponseMessage(
+	// This is literally same as CreateJoinACKMessage() and as CreateMembershipMessage()
+	peers []Peer,
+	membershipVersion int,
+	requestID string,
+) (Message, error) {
+	headers := map[string]string{
+		"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
+		"PEER_COUNT":         strconv.Itoa(len(peers)),
+	}
+
+	for i, peer := range peers {
+
+		headers[fmt.Sprintf(
+			"PEER_%d_NODE_ID",
+			i,
+		)] = peer.NodeID
+
+		headers[fmt.Sprintf(
+			"PEER_%d_ADDR",
+			i,
+		)] = peer.Addr
+	}
+
+	return Message{
+		Type:      SYNC_MEMBERSHIP_RESPONSE,
+		RequestID: requestID,
+		Headers:   headers,
+	}, nil
 }

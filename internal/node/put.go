@@ -63,7 +63,6 @@ func handlePutACK(msg transport.ParsedMessage, me *Node) {
 		return
 	}
 	req.ResultChan <- msg
-	me.RemovePendingRequest(msg.RequestID)
 }
 
 func handlePutREJ(msg transport.ParsedMessage, me *Node) {
@@ -75,28 +74,36 @@ func handlePutREJ(msg transport.ParsedMessage, me *Node) {
 
 	if msg.MembershipVersion > me.MembershipVersion {
 		// schedule membership sync
+		go SyncMembership(msg.NodeID, me, 20*time.Second)
 	}
-	if msg.SuggestedOwner != "" {
-		newPeerToTry := cluster.NewPeer(msg.SuggestedOwner, msg.SuggestedAddr)
-		if !(me.Cluster.HasPeer(newPeerToTry.NodeID)) {
+	if msg.SuggestedOwner == "" {
+		finalResponse = msg
+	} else {
+		newPeerToTry := cluster.NewPeer(
+			msg.SuggestedOwner,
+			msg.SuggestedAddr,
+		)
+		if !me.Cluster.HasPeer(newPeerToTry.NodeID) {
 			me.Cluster.AddPeer(newPeerToTry)
 		}
-		thisRequest, ok := me.GetPendingRequest(msg.RequestID)
+		thisRequest, ok := me.GetPendingRequest(
+			msg.RequestID,
+		)
 		if !ok {
 			finalResponse = msg
+		} else {
+			retryResponse, err := me.SendRequestAndWait(
+				newPeerToTry,
+				thisRequest.Message,
+				30*time.Second,
+			)
+			if err != nil {
+				finalResponse = msg
+			} else {
+				finalResponse = retryResponse
+			}
 		}
-		newMessage := thisRequest.Message
-
-		getResponseFromNewPeer, err := me.SendRequestAndWait(newPeerToTry, newMessage, 30*time.Second)
-		if err != nil {
-			finalResponse = msg
-		}
-		finalResponse = getResponseFromNewPeer
-	} else {
-		finalResponse = msg
 	}
 
 	req.ResultChan <- finalResponse
-
-	me.RemovePendingRequest(msg.RequestID)
 }

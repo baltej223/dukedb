@@ -3,12 +3,15 @@ package node
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/baltej223/dukedb/internal/cluster"
+	"github.com/baltej223/dukedb/internal/routing"
+	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
 )
 
@@ -139,4 +142,69 @@ func (me *Node) AllNodesSort() []cluster.Peer {
 		return cmp.Compare(a.NodeID, b.NodeID)
 	})
 	return currentNodes
+}
+
+type ErrorCode error
+
+var (
+	KeyNotExists ErrorCode = errors.New("KET NOT EXISTS")
+	ErrorOccured ErrorCode = errors.New("ERROR OCCURED")
+	PutFailed    ErrorCode = errors.New("PUT FAILED")
+)
+
+func GET(key string, me *Node) (string, error) {
+	owner := routing.FindOwner(key, me.AllNodesSort())
+	if owner.NodeID == me.ID {
+		if storing.Exists(key) {
+			value, ok := storing.Get(key)
+			if !ok {
+				return "", ErrorOccured
+			}
+			return string(value), nil
+		} else {
+			return "", KeyNotExists
+		}
+	} else {
+
+		request, err := transport.CreateGetMessage(
+			key,
+			me.ID,
+			me.MembershipVersion,
+		)
+		if err != nil {
+			return "", err
+		}
+		response, err := me.SendRequestAndWait(owner, request, 20*time.Second)
+		if err != nil {
+			return "", err
+		}
+		return string(response.Value), nil
+	}
+}
+
+func PUT(key, value string, me *Node) error {
+	owner := routing.FindOwner(key, me.AllNodesSort())
+	if owner.NodeID == me.ID {
+		storing.Put(key, []byte(value))
+		return nil
+	} else {
+		request, err := transport.CreatePutMessage(
+			key,
+			[]byte(value),
+			me.ID,
+			me.MembershipVersion,
+		)
+		if err != nil {
+			return err
+		}
+		response, err := me.SendRequestAndWait(owner, request, 20*time.Second)
+		if err != nil {
+			return err
+		}
+		if response.Success {
+			return nil
+		} else {
+			return PutFailed
+		}
+	}
 }

@@ -32,6 +32,10 @@ func handleGet(msg transport.ParsedMessage, me *Node) {
 			}
 		}
 	} else {
+		log.Printf(
+			"KEY MISSING key=%s",
+			msg.Key,
+		)
 		// Here a new request needs to be made
 	}
 }
@@ -53,7 +57,6 @@ func handleGetResponse(msg transport.ParsedMessage, me *Node) {
 		me.ID,
 		msg.RequestID,
 	)
-	me.RemovePendingRequest(msg.RequestID)
 }
 
 func handleGetREJ(msg transport.ParsedMessage, me *Node) {
@@ -65,6 +68,7 @@ func handleGetREJ(msg transport.ParsedMessage, me *Node) {
 
 	if msg.MembershipVersion > me.MembershipVersion {
 		// schedule membership sync
+		go SyncMembership(msg.NodeID, me, 20*time.Second)
 	}
 	if msg.SuggestedOwner != "" {
 		newPeerToTry := cluster.NewPeer(msg.SuggestedOwner, msg.SuggestedAddr)
@@ -95,6 +99,4 @@ func handleGetREJ(msg transport.ParsedMessage, me *Node) {
 	}
 
 	req.ResultChan <- finalResponse
-
-	me.RemovePendingRequest(msg.RequestID)
 }

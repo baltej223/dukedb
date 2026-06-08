@@ -90,3 +90,44 @@ func (me *Node) StartGossipLoop(printit bool) error {
 		time.Sleep(me.GossipLoopTime)
 	}
 }
+
+func handleSYNCMembership(msg transport.ParsedMessage, me *Node) {
+	gosspipMessage, err := transport.
+		CreateSYNCMebershipResponseMessage(
+			me.Cluster.GetPeers(),
+			me.MembershipVersion,
+			msg.RequestID)
+	if err != nil {
+		return
+	}
+	nodeToRespond, ok := me.Cluster.GetPeer(msg.NodeID)
+	if !ok {
+		return
+	}
+	err = transport.SendMessage(nodeToRespond, gosspipMessage)
+	if err != nil {
+		return
+	}
+}
+
+func handleSYNCMembershipResponse(msg transport.ParsedMessage, me *Node) {
+	PendingRequest, ok := me.GetPendingRequest(msg.RequestID)
+	if !ok {
+		return
+	}
+	handleMembership(msg, me)
+	PendingRequest.ResultChan <- msg
+}
+
+func SyncMembership(nodeID string, me *Node, timeout time.Duration) {
+	syncRequest, err := transport.CreateSYNCMembershipMessage(me.ID)
+	if err != nil {
+		return
+	}
+	peerToSendMessage, ok := me.Cluster.GetPeer(nodeID)
+	if !ok {
+		return
+	}
+
+	me.SendRequestAndWait(peerToSendMessage, syncRequest, timeout)
+}

@@ -37,5 +37,9 @@ func Dispatch(msg transport.ParsedMessage, me *Node) {
 		handlePutACK(msg, me)
 	case transport.PUT_REJ:
 		handlePutREJ(msg, me)
+	case transport.SYNC_MEMBERSHIP:
+		handleSYNCMembership(msg, me)
+	case transport.SYNC_MEMBERSHIP_RESPONSE:
+		handleSYNCMembershipResponse(msg, me)
 	}
 }
