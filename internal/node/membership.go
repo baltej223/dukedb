@@ -2,7 +2,6 @@ package node
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/baltej223/dukedb/internal/cluster"
@@ -10,29 +9,18 @@ import (
 	"github.com/baltej223/dukedb/scripts"
 )
 
-// [UGLY]: This function is very ugly, I need to write better version of this function in future/
 func handleMembership(msg transport.ParsedMessage, me *Node) {
-	// here I will compare the infomation which has been sent by the other node, and the infomration which I have.
-
-	newPeers := make(map[string]string)
 	currentPeers := make(map[string]string)
-
-	// First creating the map of received infomation.
-
-	for _, val := range msg.Peers {
-		newPeers[val.NodeID] = val.Addr
+	for _, p := range me.Cluster.GetPeers() {
+		currentPeers[p.NodeID] = p.Addr
 	}
 
-	for _, val := range me.Cluster.GetPeers() {
-		currentPeers[val.NodeID] = val.Addr
-	}
-
-	for _, peer := range msg.Peers {
-		if _, ok := currentPeers[peer.NodeID]; !ok {
-			// The sent info not here.
-			newPeer := cluster.NewPeer(peer.NodeID, newPeers[peer.NodeID])
-			me.Cluster.AddPeer(newPeer)
-			me.MembershipVersion = me.MembershipVersion + 1
+	for _, p := range msg.Peers {
+		if _, exists := currentPeers[p.NodeID]; !exists {
+			if p.NodeID != me.ID {
+				me.Cluster.AddPeer(cluster.NewPeer(p.NodeID, p.Addr))
+				me.MembershipVersion++
+			}
 		}
 	}
 }
@@ -72,12 +60,12 @@ func (me *Node) StartGossipLoop(printit bool) error {
 				continue
 			}
 			err := transport.SendMessage(target, gossipMessage)
-			log.Printf(
-				"[node=%s] gossiped membership (%d peers) to %s",
-				me.ID,
-				len(randomPeers),
-				target.NodeID,
-			)
+			// log.Printf(
+			// 	"[node=%s] gossiped membership (%d peers) to %s",
+			// 	me.ID,
+			// 	len(randomPeers),
+			// 	target.NodeID,
+			// )
 			if err != nil {
 				return err
 			}

@@ -102,7 +102,7 @@ func main() {
 
 	// Gossip loop
 	go func() {
-		err := me.StartGossipLoop(true)
+		err := me.StartGossipLoop(false)
 		if err != nil {
 			log.Printf("gossip failed: %v", err)
 		}

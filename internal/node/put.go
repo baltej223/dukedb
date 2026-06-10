@@ -22,6 +22,13 @@ func handlePut(msg transport.ParsedMessage, me *Node) {
 	key := msg.Key
 
 	keyOwner := routing.FindOwner(key, me.AllNodesSort())
+
+	log.Printf(
+		"[ROUTE] op=PUT key=%s owner=%s ring=%v",
+		msg.Key,
+		keyOwner.NodeID,
+		me.AllNodesSort(),
+	)
 	if keyOwner.NodeID == me.ID {
 
 		storing.Put(key, msg.Value)

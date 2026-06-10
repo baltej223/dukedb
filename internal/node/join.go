@@ -1,8 +1,6 @@
 package node
 
 import (
-	"log"
-
 	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/transport"
 )
@@ -27,11 +25,6 @@ func handleJoin(msg transport.ParsedMessage, me *Node) {
 func handleJoinACK(msg transport.ParsedMessage, me *Node) {
 	req, ok := me.GetPendingRequest(msg.RequestID)
 	if !ok {
-		log.Printf(
-			"[node=%s] no pending request found for request_id=%s",
-			me.ID,
-			msg.RequestID,
-		)
 		return
 	}
 	if msg.MembershipVersion > me.MembershipVersion {
@@ -41,12 +34,8 @@ func handleJoinACK(msg transport.ParsedMessage, me *Node) {
 	req.ResultChan <- msg
 
 	for _, value := range msg.Peers {
-		me.Cluster.AddPeer(value)
+		if value.NodeID != me.ID {
+			me.Cluster.AddPeer(value)
+		}
 	}
-
-	log.Printf(
-		"[node=%s] pending request fulfilled request_id=%s",
-		me.ID,
-		msg.RequestID,
-	)
 }

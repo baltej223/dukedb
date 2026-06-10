@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"log"
 	"slices"
 	"sync"
 	"time"
@@ -101,6 +102,13 @@ func (n *Node) GetPendingRequest(
 
 	req, ok := n.PendingRequests[requestID]
 
+	if !ok {
+		log.Printf(
+			"[PENDING_MISS] request_id=%s",
+			requestID,
+		)
+	}
+
 	return req, ok
 }
 
@@ -138,9 +146,23 @@ func (me *Node) GetAllNodes() []cluster.Peer {
 
 func (me *Node) AllNodesSort() []cluster.Peer {
 	currentNodes := me.GetAllNodes()
+
+	log.Printf(
+		"[RING_DEBUG] node=%s before_sort=%+v",
+		me.ID,
+		currentNodes,
+	)
+
 	slices.SortFunc(currentNodes, func(a, b cluster.Peer) int {
 		return cmp.Compare(a.NodeID, b.NodeID)
 	})
+
+	log.Printf(
+		"[RING_DEBUG] node=%s after_sort=%+v",
+		me.ID,
+		currentNodes,
+	)
+
 	return currentNodes
 }
 
@@ -174,10 +196,32 @@ func GET(key string, me *Node) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		response, err := me.SendRequestAndWait(owner, request, 20*time.Second)
+		response, err := me.SendRequestAndWait(
+			owner,
+			request,
+			20*time.Second,
+		)
 		if err != nil {
+			log.Printf(
+				"[CLIENT_GET_ERR] key=%s owner=%s err=%v",
+				key,
+				owner.NodeID,
+				err,
+			)
 			return "", err
 		}
+
+		log.Printf(
+			"[CLIENT_GET_RESPONSE] key=%s found=%v value_len=%d",
+			key,
+			response.Found,
+			len(response.Value),
+		)
+
+		if !response.Found {
+			return "", KeyNotExists
+		}
+
 		return string(response.Value), nil
 	}
 }

@@ -44,10 +44,18 @@ func Delete(key string) {
 }
 
 func Exists(key string) bool {
+	log.Printf("[EXISTS_ENTER] key=%s", key)
+
 	KVGlobalStruct.mu.RLock()
+
+	log.Printf("[EXISTS_LOCK_ACQUIRED] key=%s", key)
+
 	defer KVGlobalStruct.mu.RUnlock()
 
 	_, ok := KVGlobalStruct.m[key]
+
+	log.Printf("[EXISTS_EXIT] key=%s exists=%v", key, ok)
+
 	return ok
 }
 
