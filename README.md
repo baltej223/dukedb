@@ -132,6 +132,12 @@ Nodes track suspected failures and timeouts.
 
 This lays the groundwork for cluster healing and recovery.
 
+## Benchmarks (local):
+- 5-node cluster
+- 10,000 PUTs in ~0.9s
+- 10,000 GETs in ~0.9s
+- ~11k ops/sec
+
 ---
 
 ## Architecture
