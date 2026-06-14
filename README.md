@@ -40,7 +40,7 @@ The project focuses on membership management, request routing, gossip-based stat
               └─────── Gossip / Membership ───┘
 
 -----------------------------------------------------------
-            
+
             ┌────────────────────────────────────┐
             │             Duke Node              │
             ├────────────────────────────────────┤
@@ -88,6 +88,8 @@ The project focuses on membership management, request routing, gossip-based stat
          └─────────────────────────────────────┘
 ```
 
+## Note: <https://github.com/baltej223/duke-client> -> Duke Client Repo
+
 ## Why?
 
 The goal is not to compete with production systems. The goal is to build and understand the machinery that makes distributed systems work.
@@ -132,7 +134,8 @@ Nodes track suspected failures and timeouts.
 
 This lays the groundwork for cluster healing and recovery.
 
-## Benchmarks (local):
+## Benchmarks (local)
+
 - 5-node cluster
 - 10,000 PUTs in ~0.9s
 - 10,000 GETs in ~0.9s
@@ -226,4 +229,3 @@ while keeping the implementation understandable and built from first principles.
 ---
 
 Built as a learning project to understand how distributed systems actually work beneath the abstractions.
-
