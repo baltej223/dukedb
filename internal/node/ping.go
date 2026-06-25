@@ -1,9 +1,8 @@
 package node
 
 import (
-	"log"
-
 	"github.com/baltej223/dukedb/internal/transport"
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 // func handlePing(msg transport.ParsedMessage, me Node) {
@@ -18,7 +17,7 @@ import (
 // }
 
 func handlePing(msg transport.ParsedMessage, me *Node) {
-	log.Printf(
+	dukelog.Printf(
 		"[node=%s] received PING request_id=%s from node=%s",
 		me.ID,
 		msg.RequestID,
@@ -34,7 +33,7 @@ func handlePing(msg transport.ParsedMessage, me *Node) {
 		msg.NodeID,
 	)
 	if !ok {
-		log.Printf(
+		dukelog.Printf(
 			"[node=%s] failed to find peer %s",
 			me.ID,
 			msg.NodeID,
@@ -42,7 +41,7 @@ func handlePing(msg transport.ParsedMessage, me *Node) {
 		panic("error")
 	}
 
-	log.Printf(
+	dukelog.Printf(
 		"[node=%s] sending PONG request_id=%s to node=%s",
 		me.ID,
 		msg.RequestID,
@@ -50,7 +49,7 @@ func handlePing(msg transport.ParsedMessage, me *Node) {
 	)
 
 	if err := transport.SendMessage(peer, pong); err != nil {
-		log.Printf(
+		dukelog.Printf(
 			"[node=%s] failed to send PONG to node=%s: %v",
 			me.ID,
 			peer.NodeID,
@@ -59,7 +58,7 @@ func handlePing(msg transport.ParsedMessage, me *Node) {
 		return
 	}
 
-	log.Printf(
+	dukelog.Printf(
 		"[node=%s] PONG sent successfully request_id=%s",
 		me.ID,
 		msg.RequestID,

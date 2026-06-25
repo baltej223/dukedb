@@ -1,0 +1,14 @@
+{
+  "name": "tests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "client.js",
+  "type":"module",
+  "scripts": {
+    "test-single":"./single.js",
+    "test-multiple":"./cluster.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

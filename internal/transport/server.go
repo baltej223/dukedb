@@ -2,9 +2,9 @@
 package transport
 
 import (
-	"fmt"
-	"log"
 	"net"
+
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 type Server struct {
@@ -25,12 +25,12 @@ func (s *Server) Start(connectionHandler func(conn net.Conn)) error {
 
 	defer listener.Close()
 
-	fmt.Println("tcp server listening on", s.address)
+	dukelog.Println("tcp server listening on", s.address)
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("accept error:", err)
+			dukelog.Println("accept error:", err)
 			continue
 		}
 
@@ -55,24 +55,24 @@ func (s *Server) Start(connectionHandler func(conn net.Conn)) error {
 //
 
 func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
-	log.Println("new connection")
+	dukelog.Println("New connection")
 
 	raw, err := readMessage(conn)
 	if err != nil {
-		log.Println("read error:", err)
+		dukelog.Println("read error:", err)
 		return
 	}
 
-	// log.Printf("raw message:\n%s", raw)
+	// dukelog.Printf("raw message:\n%s", raw)
 
 	parsed, err := Parse(raw)
 	if err != nil {
-		log.Println("parse error:", err)
+		dukelog.Println("parse error:", err)
 		return
 	}
 
-	log.Printf(
-		"parsed type=%s request_id=%s",
+	dukelog.Printf(
+		"Parsed Type=%s Request_id=%s",
 		parsed.Type,
 		parsed.RequestID,
 	)

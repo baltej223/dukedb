@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/baltej223/dukedb/internal/node"
 	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 func main() {
@@ -40,6 +40,10 @@ func main() {
 	}
 	// Flags Check END
 
+	// Start Logging here
+	defer dukelog.Flush()
+	//
+
 	hostname := *selfAddress
 	var me *node.Node
 	var neighbours []cluster.Peer
@@ -60,7 +64,7 @@ func main() {
 
 	// Init tranport server
 	server := transport.NewServer(hostname)
-	log.Println("Starting duke node on " + me.Hostname)
+	dukelog.Printf("Starting duke node on %s", me.Hostname)
 
 	go func() {
 		err := server.Start(func(conn net.Conn) {
@@ -72,7 +76,7 @@ func main() {
 			)
 		})
 		if err != nil {
-			log.Fatal(err)
+			dukelog.Fatal(err)
 		}
 		fmt.Println("Done")
 	}()
@@ -104,7 +108,7 @@ func main() {
 	go func() {
 		err := me.StartGossipLoop(false)
 		if err != nil {
-			log.Printf("gossip failed: %v", err)
+			dukelog.Printf("gossip failed: %v", err)
 		}
 	}()
 

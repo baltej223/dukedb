@@ -2,8 +2,9 @@
 package storing
 
 import (
-	"log"
 	"sync"
+
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 type KV struct {
@@ -23,7 +24,7 @@ func Put(key string, value []byte) {
 	KVGlobalStruct.mu.Lock()
 	defer KVGlobalStruct.mu.Unlock()
 
-	log.Printf("Putting %s->%s to KV", key, value)
+	dukelog.Printf("Putting %s->%s to KV", key, value)
 	KVGlobalStruct.m[key] = value
 }
 
@@ -32,7 +33,7 @@ func Get(key string) ([]byte, bool) {
 	defer KVGlobalStruct.mu.RUnlock()
 
 	value, ok := KVGlobalStruct.m[key]
-	log.Printf("Getting %s->%s from KV", key, value)
+	dukelog.Printf("Getting %s->%s from KV", key, value)
 	return value, ok
 }
 
@@ -44,17 +45,11 @@ func Delete(key string) {
 }
 
 func Exists(key string) bool {
-	log.Printf("[EXISTS_ENTER] key=%s", key)
-
 	KVGlobalStruct.mu.RLock()
-
-	log.Printf("[EXISTS_LOCK_ACQUIRED] key=%s", key)
 
 	defer KVGlobalStruct.mu.RUnlock()
 
 	_, ok := KVGlobalStruct.m[key]
-
-	log.Printf("[EXISTS_EXIT] key=%s exists=%v", key, ok)
 
 	return ok
 }

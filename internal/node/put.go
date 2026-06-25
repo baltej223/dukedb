@@ -1,7 +1,6 @@
 package node
 
 import (
-	"log"
 	"time"
 
 	"github.com/baltej223/dukedb/internal/cluster"
@@ -11,24 +10,10 @@ import (
 )
 
 func handlePut(msg transport.ParsedMessage, me *Node) {
-	log.Printf(
-		"[node=%s] PUT ENTER request_id=%s key=%s sender=%s",
-		me.ID,
-		msg.RequestID,
-		msg.Key,
-		msg.NodeID,
-	)
-
 	key := msg.Key
 
 	keyOwner := routing.FindOwner(key, me.AllNodesSort())
 
-	log.Printf(
-		"[ROUTE] op=PUT key=%s owner=%s ring=%v",
-		msg.Key,
-		keyOwner.NodeID,
-		me.AllNodesSort(),
-	)
 	if keyOwner.NodeID == me.ID {
 
 		storing.Put(key, msg.Value)

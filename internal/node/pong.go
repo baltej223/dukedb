@@ -1,13 +1,12 @@
 package node
 
 import (
-	"log"
-
 	"github.com/baltej223/dukedb/internal/transport"
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 func handlePong(msg transport.ParsedMessage, me *Node) {
-	log.Printf(
+	dukelog.Printf(
 		"[node=%s] received PONG request_id=%s from node=%s",
 		me.ID,
 		msg.RequestID,
@@ -16,7 +15,7 @@ func handlePong(msg transport.ParsedMessage, me *Node) {
 
 	req, ok := me.GetPendingRequest(msg.RequestID)
 	if !ok {
-		log.Printf(
+		dukelog.Printf(
 			"[node=%s] no pending request found for request_id=%s",
 			me.ID,
 			msg.RequestID,
@@ -24,7 +23,7 @@ func handlePong(msg transport.ParsedMessage, me *Node) {
 		return
 	}
 
-	log.Printf(
+	dukelog.Printf(
 		"[node=%s] fulfilling pending request request_id=%s",
 		me.ID,
 		msg.RequestID,
@@ -32,7 +31,7 @@ func handlePong(msg transport.ParsedMessage, me *Node) {
 
 	req.ResultChan <- msg
 
-	log.Printf(
+	dukelog.Printf(
 		"[node=%s] pending request fulfilled request_id=%s",
 		me.ID,
 		msg.RequestID,

@@ -2,18 +2,18 @@ package transport
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"net"
 	"strconv"
 	"strings"
 
 	"github.com/baltej223/dukedb/internal/cluster"
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 func SendMessage(n cluster.Peer, m Message) error {
 	messageString := Serialize(m)
-	fmt.Printf("Sending message to %s\n", n.Addr)
+	dukelog.Printf("Sending message to %s\n", n.Addr)
 	err := Send(n, messageString)
 	if err != nil {
 		return err

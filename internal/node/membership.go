@@ -1,11 +1,11 @@
 package node
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/transport"
+	dukelog "github.com/baltej223/dukedb/log"
 	"github.com/baltej223/dukedb/scripts"
 )
 
@@ -60,19 +60,13 @@ func (me *Node) StartGossipLoop(printit bool) error {
 				continue
 			}
 			err := transport.SendMessage(target, gossipMessage)
-			// log.Printf(
-			// 	"[node=%s] gossiped membership (%d peers) to %s",
-			// 	me.ID,
-			// 	len(randomPeers),
-			// 	target.NodeID,
-			// )
 			if err != nil {
 				return err
 			}
 		}
 
 		if printit {
-			fmt.Println(me.Cluster.Dump())
+			dukelog.Print(me.Cluster.Dump())
 		}
 
 		time.Sleep(me.GossipLoopTime)

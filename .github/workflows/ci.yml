@@ -1,0 +1,91 @@
+name: DukeDB CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Build Duke
+        run: go build -o duke ./cmd/duke
+
+  single-node-test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Build Duke
+        run: go build -o duke ./cmd/duke
+
+      - name: Start seed node
+        run: |
+          ./duke \
+            --self-node-id A \
+            --self-addr localhost:8000 \
+            --seed-node \
+            --api-at :9000 &
+          sleep 3
+
+      - name: Run single node test
+        run: bun tests/single.js
+
+  cluster-test:
+    needs: single-node-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Build Duke
+        run: go build -o duke ./cmd/duke
+
+      - name: Start cluster
+        run: |
+          ./duke --self-node-id A --self-addr localhost:8000 --seed-node --api-at :9000 &
+
+          sleep 2
+
+          ./duke --self-node-id B --self-addr localhost:8001 --peer-node-id A --peer-addr localhost:8000 --api-at :9001 &
+          ./duke --self-node-id C --self-addr localhost:8002 --peer-node-id A --peer-addr localhost:8000 --api-at :9002 &
+          ./duke --self-node-id D --self-addr localhost:8003 --peer-node-id A --peer-addr localhost:8000 --api-at :9003 &
+          ./duke --self-node-id E --self-addr localhost:8004 --peer-node-id A --peer-addr localhost:8000 --api-at :9004 &
+
+          sleep 10
+
+      - name: Run cluster integration test
+        run: bun tests/cluster.js

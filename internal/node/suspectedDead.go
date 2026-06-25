@@ -4,22 +4,6 @@ import "github.com/baltej223/dukedb/internal/cluster"
 
 type SuspectedDeadPeers = []cluster.Peer
 
-// func (n *Node) SetSuspectedDeadPeers(
-// 	peers SuspectedDeadPeers,
-// ) {
-// 	n.SuspectedDeadPeersMu.Lock()
-// 	defer n.SuspectedDeadPeersMu.Unlock()
-//
-// 	n.SuspectedDeadPeers = peers
-// }
-//
-// func (n *Node) GetSuspectedDeadPeers() SuspectedDeadPeers {
-// 	n.SuspectedDeadPeersMu.RLock()
-// 	defer n.SuspectedDeadPeersMu.RUnlock()
-//
-// 	return n.SuspectedDeadPeers
-// }
-
 func (n *Node) AddSuspectedDeadPeer(
 	peer cluster.Peer,
 ) {
