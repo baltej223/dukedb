@@ -200,11 +200,11 @@ Implemented:
 - Request/response correlation
 - Membership versioning
 - Redirect hints for stale routing
+- Membership synchronization protocol
+- Stale route repair
 
 In Progress:
 
-- Membership synchronization protocol
-- Stale route repair
 - Failure recovery
 - Replication
 - Data migration
