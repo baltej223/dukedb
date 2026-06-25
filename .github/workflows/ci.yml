@@ -19,6 +19,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Install JS dependencies
+        working-directory: tests
         run: bun install
 
       - name: Build Duke
@@ -38,6 +39,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Install JS dependencies
+        working-directory: tests
         run: bun install
 
       - name: Build Duke
@@ -69,6 +71,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Install JS dependencies
+        working-directory: tests
         run: bun install
 
       - name: Build Duke
