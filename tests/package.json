@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "main": "client.js",
-  "type":"module",
+  "type": "module",
   "scripts": {
-    "test-single":"./single.js",
-    "test-multiple":"./cluster.js"
+    "test-single": "./single.js",
+    "test-multiple": "./cluster.js"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "duke-client": "^1.0.1"
+  }
 }

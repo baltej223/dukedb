@@ -1,0 +1,14 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "tests",
+      "dependencies": {
+        "duke-client": "^1.0.1",
+      },
+    },
+  },
+  "packages": {
+    "duke-client": ["duke-client@1.0.1", "", {}, "sha512-S+NyIzCGWITWqzr92qfJIoZ0OcFaTqWQReX1ZwTGJmcJxXxk49Sc/fI1XGFodadLIrhd63Ngqw35S8SMfR3Xzw=="],
+  }
+}

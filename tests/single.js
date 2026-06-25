@@ -1,4 +1,4 @@
-import Duke from "./client.js";
+import Duke from "duke-client";
 
 const db = new Duke();
 
