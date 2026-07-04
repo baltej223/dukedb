@@ -36,8 +36,7 @@ func handleGet(
 			return
 		}
 	}
-
-	if ownerNode.NodeID == me.ID {
+	if (ownerNode.NodeID == me.ID) || IsReplica(msg.Key, me) {
 		if storing.Exists(msg.Key) {
 
 			val, isOK := storing.Get(msg.Key)

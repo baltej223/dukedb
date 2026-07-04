@@ -7,6 +7,7 @@ import (
 	"github.com/baltej223/dukedb/internal/routing"
 	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 func handlePut(msg transport.ParsedMessage, me *Node) {
@@ -14,12 +15,25 @@ func handlePut(msg transport.ParsedMessage, me *Node) {
 
 	keyOwner := routing.FindOwner(key, me.AllNodesSort())
 
-	if keyOwner.NodeID == me.ID {
+	if keyOwner.NodeID == me.ID || IsReplica(key, me) {
+
+		if IsReplica(key, me) {
+			dukelog.Printf(
+				"PUT to replica received key=%s sender=%s me=%s",
+				msg.Key,
+				msg.NodeID,
+				me.ID,
+			)
+		}
 
 		storing.Put(key, msg.Value)
 
-		response := transport.CreatePutACKMessage(msg.RequestID)
+		// Here stream to replicas
+		if keyOwner.NodeID == me.ID {
+			go SendPutToReplicas(key, string(msg.Value), me)
+		}
 
+		response := transport.CreatePutACKMessage(msg.RequestID)
 		peerToReply, ok := me.Cluster.GetPeer(msg.NodeID)
 		if !ok {
 			return
@@ -28,7 +42,6 @@ func handlePut(msg transport.ParsedMessage, me *Node) {
 		if err != nil {
 			return
 		}
-
 	} else {
 		response := transport.CreatePutREJMessage(
 			msg.RequestID,
@@ -45,7 +58,6 @@ func handlePut(msg transport.ParsedMessage, me *Node) {
 		if err != nil {
 			return
 		}
-
 	}
 }
 

@@ -7,6 +7,9 @@ type SuspectedDeadPeers = []cluster.Peer
 func (n *Node) AddSuspectedDeadPeer(
 	peer cluster.Peer,
 ) {
+	if peer.NodeID == n.ID {
+		panic("trying to suspect myself")
+	}
 	n.SuspectedDeadPeersMu.Lock()
 	defer n.SuspectedDeadPeersMu.Unlock()
 

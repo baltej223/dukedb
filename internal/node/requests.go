@@ -6,18 +6,23 @@ import (
 
 	"github.com/baltej223/dukedb/internal/cluster"
 	"github.com/baltej223/dukedb/internal/transport"
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 var ErrRequestTimedOut = errors.New(
 	"request timed out",
 )
 
-func (n *Node) SendRequestAndWait(
+func (me *Node) SendRequestAndWait(
 	peer cluster.Peer,
 	msg transport.Message,
 	timeout time.Duration,
 ) (transport.ParsedMessage, error) {
-	defer n.RemovePendingRequest(
+	if peer.NodeID == me.ID {
+		panic("SendRequestAndWait called on myself")
+	}
+
+	defer me.RemovePendingRequest(
 		msg.RequestID,
 	)
 
@@ -29,7 +34,7 @@ func (n *Node) SendRequestAndWait(
 		),
 	}
 
-	n.AddPendingRequest(
+	me.AddPendingRequest(
 		msg.RequestID,
 		&pendingRequest,
 	)
@@ -42,7 +47,7 @@ func (n *Node) SendRequestAndWait(
 		return transport.ParsedMessage{}, err
 	}
 
-	response, err := n.WaitForPendingRequest(
+	response, err := me.WaitForPendingRequest(
 		msg.RequestID,
 		timeout,
 	)
@@ -51,11 +56,27 @@ func (n *Node) SendRequestAndWait(
 		if errors.Is(
 			err,
 			ErrRequestTimedOut,
-		) {
+		) && !me.IsSuspectedDead(peer.NodeID) {
 
-			n.AddSuspectedDeadPeer(
+			dukelog.Printf(
+				"PING: sender=%s destination=%s addr=%s",
+				me.ID,
+				peer.NodeID,
+				peer.Addr,
+			)
+
+			pingMessage, err := transport.CreatePingMessage(me.ID)
+			if err != nil {
+				dukelog.Error(err)
+			}
+			me.AddSuspectedDeadPeer(
 				peer,
 			)
+			err = transport.SendMessage(peer, pingMessage)
+			if err != nil {
+				dukelog.Error("Error in sending ping for node testing.")
+			}
+
 		}
 
 		return transport.ParsedMessage{},

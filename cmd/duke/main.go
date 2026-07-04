@@ -25,6 +25,7 @@ func main() {
 	peerNodeID := flag.String("peer-node-id", "", "Peer node ID, Example: b")
 	delay := flag.Int("delay", 5, "[Debug]: Initial Delay Before sending first request")
 	apiAt := flag.String("api-at", ":9000", "Where to run API server at?")
+	rf := flag.Int("replication-factor", 1, "The shared replication factor of the cluster.")
 	// FLAGS END
 	flag.Parse()
 
@@ -59,6 +60,7 @@ func main() {
 		*selfAddress,
 		neighbours,
 		10*time.Second,
+		*rf,
 	)
 	storing.InitialiseKV()
 

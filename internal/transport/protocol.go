@@ -86,6 +86,8 @@ func ParseMessageType(s string) (MessageType, error) {
 		return GET, nil
 	case "GET_RESPONSE":
 		return GET_RESPONSE, nil
+	case "GET_REJECT":
+		return GET_REJ, nil
 	case "JOIN":
 		return JOIN, nil
 	case "JOIN_ACK":
@@ -267,6 +269,15 @@ func Parse(raw string) (ParsedMessage, error) {
 				return ParsedMessage{}, err
 			}
 		}
+	case GET_REJ:
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
+		msg.SuggestedOwner = headers["SUGGESTED_OWNER"]
+		msg.SuggestedAddr = headers["SUGGESTED_ADDR"]
+		msg.Success = headers["SUCCESS"] == "false"
 
 	case PUT_ACK:
 		msg.Success = headers["SUCCESS"] == "true"
@@ -392,7 +403,7 @@ func CreatePingMessage(
 func CreatePutMessage(
 	key string,
 	value []byte,
-	nodeID string,
+	menodeID string,
 	membershipVersion int,
 ) (Message, error) {
 	requestID, err := createRequestID()
@@ -405,7 +416,7 @@ func CreatePutMessage(
 		RequestID: requestID,
 		Headers: map[string]string{
 			"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
-			"NODE_ID":            nodeID,
+			"NODE_ID":            menodeID,
 			"KEY":                key,
 			"VALUE_BASE64":       EncodeValue(value),
 		},

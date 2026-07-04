@@ -29,6 +29,8 @@ type Node struct {
 
 	GossipLoopTime    time.Duration
 	MembershipVersion int
+
+	ReplicationFactor int
 	// Transport 	 *transport.Transport
 	// Storage     *storage.Engine
 	// Router      *routing.Router
@@ -49,6 +51,7 @@ func Initialise(
 	hostname string,
 	peers []cluster.Peer,
 	GossipLoopTime time.Duration,
+	ReplicationFactor int,
 ) *Node {
 	return &Node{
 		ID:       ID,
@@ -69,6 +72,8 @@ func Initialise(
 
 		GossipLoopTime:    GossipLoopTime,
 		MembershipVersion: 0,
+
+		ReplicationFactor: ReplicationFactor,
 	}
 }
 
@@ -186,14 +191,28 @@ func GET(key string, me *Node) (string, error) {
 		response, err := me.SendRequestAndWait(
 			owner,
 			request,
-			20*time.Second,
+			10*time.Second,
 		)
-		if err != nil {
-			return "", err
-		}
 
-		if !response.Found {
-			return "", KeyNotExists
+		if !response.Found || err != nil {
+			replicas := routing.FindReplicas(
+				key,
+				me.AllNodesSort(),
+				me.ReplicationFactor,
+			)
+			for _, replica := range replicas {
+				response, err = me.SendRequestAndWait(
+					replica,
+					request,
+					10*time.Second,
+				)
+				if err != nil {
+					continue
+				}
+				if response.Found {
+					return string(response.Value), nil
+				}
+			}
 		}
 
 		return string(response.Value), nil
