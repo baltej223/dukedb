@@ -43,7 +43,7 @@ func handlePut(msg transport.ParsedMessage, me *Node) {
 			return
 		}
 	} else {
-		response := transport.CreatePutREJMessage(
+		response := transport.CreatePutRedirectMessage(
 			msg.RequestID,
 			keyOwner,
 			me.MembershipVersion,
@@ -69,7 +69,7 @@ func handlePutACK(msg transport.ParsedMessage, me *Node) {
 	req.ResultChan <- msg
 }
 
-func handlePutREJ(msg transport.ParsedMessage, me *Node) {
+func handlePutRedirect(msg transport.ParsedMessage, me *Node) {
 	req, ok := me.GetPendingRequest(msg.RequestID)
 	if !ok {
 		return
@@ -87,6 +87,12 @@ func handlePutREJ(msg transport.ParsedMessage, me *Node) {
 			msg.SuggestedOwner,
 			msg.SuggestedAddr,
 		)
+
+		if me.IsSuspectedDead(newPeerToTry.NodeID) {
+			req.ResultChan <- msg
+			return
+		}
+
 		if !me.Cluster.HasPeer(newPeerToTry.NodeID) {
 			me.Cluster.AddPeer(newPeerToTry)
 		}
@@ -110,4 +116,18 @@ func handlePutREJ(msg transport.ParsedMessage, me *Node) {
 	}
 
 	req.ResultChan <- finalResponse
+}
+
+func handlePutREJ(msg transport.ParsedMessage, me *Node) {
+	req, ok := me.GetPendingRequest(msg.RequestID)
+	if !ok {
+		return
+	}
+
+	if msg.MembershipVersion > me.MembershipVersion {
+		// schedule membership sync
+		go SyncMembership(msg.NodeID, me, 20*time.Second)
+	}
+
+	req.ResultChan <- msg
 }

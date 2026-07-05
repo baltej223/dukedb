@@ -19,8 +19,13 @@ func handleGet(
 		msg.Key,
 		sortedNodes,
 	)
-	reject := func(requestID string, me *Node) {
-		response := transport.CreateGetREJMessage(requestID, ownerNode, me.MembershipVersion)
+	reject := func(requestID string, me *Node, suggestOwner bool) {
+		var response transport.Message
+		if suggestOwner {
+			response = transport.CreateGetRedirectMessage(requestID, ownerNode, me.MembershipVersion)
+		} else {
+			response = transport.CreateGetREJMessage(requestID, me.MembershipVersion)
+		}
 		peerToReply, ok := me.Cluster.GetPeer(
 			msg.NodeID,
 		)
@@ -36,6 +41,7 @@ func handleGet(
 			return
 		}
 	}
+
 	if (ownerNode.NodeID == me.ID) || IsReplica(msg.Key, me) {
 		if storing.Exists(msg.Key) {
 
@@ -65,11 +71,11 @@ func handleGet(
 				return
 			}
 		} else {
-			reject(msg.RequestID, me)
+			reject(msg.RequestID, me, false)
 		}
 	} else {
 		// Here a new request needs to be made
-		reject(msg.RequestID, me)
+		reject(msg.RequestID, me, true)
 	}
 }
 
@@ -92,7 +98,7 @@ func handleGetResponse(
 	)
 }
 
-func handleGetREJ(
+func handleGetRedirect(
 	msg transport.ParsedMessage,
 	me *Node,
 ) {
@@ -120,6 +126,11 @@ func handleGetREJ(
 			msg.SuggestedOwner,
 			msg.SuggestedAddr,
 		)
+
+		if me.IsSuspectedDead(newPeerToTry.NodeID) {
+			req.ResultChan <- msg
+			return
+		}
 
 		if !(me.Cluster.HasPeer(
 			newPeerToTry.NodeID,
@@ -167,4 +178,26 @@ func handleGetREJ(
 	}
 
 	req.ResultChan <- finalResponse
+}
+
+func handleGetREJ(
+	msg transport.ParsedMessage,
+	me *Node,
+) {
+	req, ok := me.GetPendingRequest(
+		msg.RequestID,
+	)
+
+	if !ok {
+		return
+	}
+
+	if msg.MembershipVersion > me.MembershipVersion {
+		go SyncMembership(
+			msg.NodeID,
+			me,
+			20*time.Second,
+		)
+	}
+	req.ResultChan <- msg
 }

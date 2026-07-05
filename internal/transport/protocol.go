@@ -21,10 +21,12 @@ const (
 	PUT
 	PUT_ACK
 	PUT_REJ
+	PUT_REDIRECT
 
 	GET
 	GET_RESPONSE
 	GET_REJ
+	GET_REDIRECT
 
 	JOIN
 	JOIN_ACK
@@ -47,12 +49,16 @@ func (m MessageType) String() string {
 		return "PUT_ACK"
 	case PUT_REJ:
 		return "PUT_REJ"
+	case PUT_REDIRECT:
+		return "PUT_REDIRECT"
 	case GET:
 		return "GET"
 	case GET_RESPONSE:
 		return "GET_RESPONSE"
 	case GET_REJ:
 		return "GET_REJECT"
+	case GET_REDIRECT:
+		return "GET_REDIRECT"
 	case JOIN:
 		return "JOIN"
 	case JOIN_ACK:
@@ -82,12 +88,16 @@ func ParseMessageType(s string) (MessageType, error) {
 		return PUT_ACK, nil
 	case "PUT_REJ":
 		return PUT_REJ, nil
+	case "PUT_REDIRECT":
+		return PUT_REDIRECT, nil
 	case "GET":
 		return GET, nil
 	case "GET_RESPONSE":
 		return GET_RESPONSE, nil
 	case "GET_REJECT":
 		return GET_REJ, nil
+	case "GET_REDIRECT":
+		return GET_REDIRECT, nil
 	case "JOIN":
 		return JOIN, nil
 	case "JOIN_ACK":
@@ -182,7 +192,6 @@ func Serialize(msg Message) string {
 	return b.String()
 }
 
-// Parse converts the Message struct to string
 func Parse(raw string) (ParsedMessage, error) {
 	// type TheRequestsHavingPeers = GOSSIPMEMBERSHIP or JOIN_ACK
 
@@ -269,7 +278,16 @@ func Parse(raw string) (ParsedMessage, error) {
 				return ParsedMessage{}, err
 			}
 		}
+
 	case GET_REJ:
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
+		msg.Success = headers["SUCCESS"] == "false"
+
+	case GET_REDIRECT:
 		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
 		if err != nil {
 			return ParsedMessage{}, err
@@ -283,6 +301,14 @@ func Parse(raw string) (ParsedMessage, error) {
 		msg.Success = headers["SUCCESS"] == "true"
 
 	case PUT_REJ:
+		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
+		if err != nil {
+			return ParsedMessage{}, err
+		}
+		msg.MembershipVersion = version
+		msg.Success = headers["SUCCESS"] == "false"
+
+	case PUT_REDIRECT:
 		version, err := strconv.Atoi(headers["MEMBERSHIP_VERSION"])
 		if err != nil {
 			return ParsedMessage{}, err
@@ -546,7 +572,7 @@ func CreatePutACKMessage(
 	}
 }
 
-func CreatePutREJMessage(
+func CreatePutRedirectMessage(
 	requestID string,
 	suggestedOwner cluster.Peer,
 	membershipVersion int, // current (my) membership version
@@ -559,6 +585,20 @@ func CreatePutREJMessage(
 			"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
 			"SUGGESTED_OWNER":    suggestedOwner.NodeID,
 			"SUGGESTED_ADDR":     suggestedOwner.Addr,
+		},
+	}
+}
+
+func CreatePutREJMessage(
+	requestID string,
+	membershipVersion int, // current (my) membership version
+) Message {
+	return Message{
+		Type:      PUT_REJ,
+		RequestID: requestID,
+		Headers: map[string]string{
+			"SUCCESS":            "false",
+			"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
 		},
 	}
 }
@@ -580,11 +620,25 @@ func CreateGetResponseMessage(
 
 func CreateGetREJMessage(
 	requestID string,
-	suggestedOwner cluster.Peer,
 	membershipVersion int, // current (my) membership version
 ) Message {
 	return Message{
 		Type:      GET_REJ,
+		RequestID: requestID,
+		Headers: map[string]string{
+			"SUCCESS":            "false",
+			"MEMBERSHIP_VERSION": strconv.Itoa(membershipVersion),
+		},
+	}
+}
+
+func CreateGetRedirectMessage(
+	requestID string,
+	suggestedOwner cluster.Peer,
+	membershipVersion int, // current (my) membership version
+) Message {
+	return Message{
+		Type:      GET_REDIRECT,
 		RequestID: requestID,
 		Headers: map[string]string{
 			"SUCCESS":            "false",

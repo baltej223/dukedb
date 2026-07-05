@@ -1,5 +1,7 @@
 # DukeDB
 
+<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/baltej223/dukedb/ci.yml">
+
 A distributed key-value database built from scratch in Go.
 
 DukeDB is an experiment in understanding distributed systems by implementing them from first principles rather than relying on existing frameworks or databases.

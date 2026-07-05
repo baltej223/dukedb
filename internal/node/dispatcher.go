@@ -30,12 +30,16 @@ func Dispatch(msg transport.ParsedMessage, me *Node) {
 		go handleGetResponse(msg, me)
 	case transport.GET_REJ:
 		go handleGetREJ(msg, me)
+	case transport.GET_REDIRECT:
+		go handleGetRedirect(msg, me)
 	case transport.PUT:
 		go handlePut(msg, me)
 	case transport.PUT_ACK:
 		go handlePutACK(msg, me)
 	case transport.PUT_REJ:
 		go handlePutREJ(msg, me)
+	case transport.PUT_REDIRECT:
+		go handlePutRedirect(msg, me)
 	case transport.SYNC_MEMBERSHIP:
 		go handleSYNCMembership(msg, me)
 	case transport.SYNC_MEMBERSHIP_RESPONSE:
