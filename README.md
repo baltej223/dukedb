@@ -1,12 +1,89 @@
-# DukeDB
-
-<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/baltej223/dukedb/ci.yml">
+# Duke
 
 A distributed key-value database built from scratch in Go.
+DukeDB is an simple and small distributed database implementing membership, **gossip**, routing, failure detection, and replication without relying on 
+existing distributed systems frameworks. Its properly distributed using **Gossip Protocol** with the idea of eventual consistency.
 
-DukeDB is an experiment in understanding distributed systems by implementing them from first principles rather than relying on existing frameworks or databases.
+<p>
+<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/baltej223/dukedb/ci.yml">
+</p>
 
-The project focuses on membership management, request routing, gossip-based state propagation, failure handling, and eventually data replication and recovery.
+## Current Capabilities
+
+-  [x] Distributed key-value storage
+-  [x]  Gossip-based cluster membership
+-  [x]  Membership synchronization
+-  [x] Membership versioning
+-  [x] Consistent ownership routing
+-  [x] Distributed PUT / GET
+-  [x] Data replication
+-  [x] Automatic request forwarding
+-  [x] Stale route detection and repair
+-  [x] Request/response correlation
+-  [x] HTTP API
+-  [x] Offical JavaScript SDK
+-  [x] Custom TCP protocol
+-  [x] End-to-end CI testing
+-  [x] Replication
+
+In Progress:
+
+-  [ ] Failure recovery
+-  [ ] Data migration / rebalancing
+-  [ ] Persistence
+
+# Quick Start
+- Clone this repositry.
+```bash
+git clone https://github.com/baltej223/dukedb.git dukedb
+cd dukedb
+```
+- Then build duke. (make sure you have `make` installed)
+```bash
+make compile
+```
+- Then run few duke nodes.
+```bash
+make run-five-nodes
+```
+- One liner:
+```sh
+git clone https://github.com/baltej223/dukedb.git dukedb && cd dukedb && make compile && make run-five-nodes ;
+```
+- For running custom number of nodes, git clone the [`duke-orchestrator`](https://github.com/baltej223/duke-orchestrator). 
+
+- If cluster started by  `make run-five-nodes` the nodes will expose a client facing http API at ports `9000`, `9001`, `9002`, `9003`, `9004`. Then using it from the client side is super-duper simple.
+## Example
+
+Store a value:
+
+```bash
+curl -X PUT \
+http://localhost:9000/put \
+-H "Content-Type: application/json" \
+-d '{"key":"name","value":"Duke"}'
+```
+
+Retrieve it:
+
+```bash
+curl "http://localhost:9003/get?key=name"
+```
+
+Requests may be sent to **any node** in the cluster. Duke automatically routes them to the node responsible for the key.
+
+> **NOTE**:
+DukeDB's [offical Javascript client](https://github.com/baltej223/duke-client) is available, and is recommended.
+Install it using `npm install duke-client`
+
+## How It Works
+
+- The duke node is divided into layers, like tranport layer, routing layer, api layer, node runtime layer, storing layer, routing layer and cluster layer where each layer servers its very specific purpose.
+- Every node maintains a view of the cluster through periodic gossip.
+- Keys are deterministically mapped to owner nodes using the routing layer.
+If a request reaches a node that does not own the key (at the client interface), it is transparently forwarded to the appropriate owner.
+
+Writes are replicated to the configured replica set, allowing data to remain available even if individual nodes fail.
 
 ```
                     ┌─────────────────────┐
@@ -89,145 +166,18 @@ The project focuses on membership management, request routing, gossip-based stat
          │ Membership │ Routing │ Storage      │
          └─────────────────────────────────────┘
 ```
-
-## Note: <https://github.com/baltej223/duke-client> -> Duke Client Repo
-
-## Why?
-
-The goal is not to compete with production systems. The goal is to build and understand the machinery that makes distributed systems work.
-
-## Current Features
-
-### Cluster Membership
-
-Nodes can join an existing cluster using a seed node.
-
-New members receive the current cluster view and become part of the membership list.
-
-### Gossip-Based Membership Propagation
-
-Membership information is propagated between nodes using gossip.
-
-Nodes gradually converge toward a consistent view of the cluster without requiring a central coordinator.
-
-### Consistent Ownership Routing
-
-Keys are deterministically mapped to owning nodes.
-
-Requests sent to the wrong node can be rejected and redirected toward the correct owner.
-
-### Distributed PUT / GET
-
-Clients can:
-
-- Store values
-- Retrieve values
-- Route requests across the cluster
-
-### Membership Versioning
-
-Each node maintains a membership version.
-
-Version numbers are used to detect stale routing information and support future cluster state synchronization.
-
-### Failure Detection (Work In Progress)
-
-Nodes track suspected failures and timeouts.
-
-This lays the groundwork for cluster healing and recovery.
-
-## Benchmarks (local)
-
-- 5-node cluster
-- 10,000 PUTs in ~0.9s
-- 10,000 GETs in ~0.9s
-- ~11k ops/sec
-
----
-
-## Architecture
-
-```text
-Client
-   |
-   v
-Any Node
-   |
-   +---- Owner Node ----> Storage
+# Running a Duke node manually
+- There can be two types of duke nodes at the node startup, either a seed node, or a non-seed node.
+For starting a node as a seed node at the time of startup:
+> (Assuming main is the duke compiled executable)
+```sh
+./main -self-addr "localhost:8000" -self-node-id "a" -seed-node=true -api-at ":9000" -replication-factor 3 
 ```
-
-Requests may enter through any node.
-
-Ownership is determined using cluster membership information.
-
-If a node receives a request for data it does not own, it can redirect the request toward the appropriate owner.
-
----
-
-## Protocol
-
-DukeDB uses a custom text-based protocol over TCP.
-
-Examples:
-
-```text
-PUT
-REQUEST_ID abc123
-NODE_ID node-a
-KEY user:42
-VALUE_BASE64 SGVsbG8=
+For starting a node as a non seed node, it needs node id and address of a already running seed node, to which it can connect to form the cluster.
+```sh
+./main -self-addr "localhost:8001" -self-node-id "b" -peer-addr "localhost:8000" -peer-node-id "a" -delay 2 -api-at ":9001" -replication-factor 3 & \
 ```
+## Parameters definition:
 
-```text
-GET
-REQUEST_ID xyz456
-NODE_ID node-b
-KEY user:42
-```
-
-Membership propagation is performed using gossip messages exchanged between nodes.
-
----
-
-## Current Status
-
-Implemented:
-
-- Node join protocol
-- Membership propagation
-- Gossip loop
-- Request routing
-- PUT
-- GET
-- Request/response correlation
-- Membership versioning
-- Redirect hints for stale routing
-- Membership synchronization protocol
-- Stale route repair
-
-In Progress:
-
-- Failure recovery
-- Replication
-- Data migration
-- Persistence
-
----
-
-## Goals
-
-The long-term goal is to explore:
-
-- Gossip protocols
-- Membership management
-- Consistent routing
-- Replication
-- Failure detection
-- Distributed consensus
-- Cluster recovery
-
-while keeping the implementation understandable and built from first principles.
-
----
-
-Built as a learning project to understand how distributed systems actually work beneath the abstractions.
+## Contributing
+Its a rather new project, any types of contribution, bug reports, features, and changes are accepted.
