@@ -1,12 +1,15 @@
-# Duke
-
+<div align="center">
+<h1>DukeDB</h1>
+<p align="center">
 A distributed key-value database built from scratch in Go.
-DukeDB is an simple and small distributed database implementing membership, **gossip**, routing, failure detection, and replication without relying on 
-existing distributed systems frameworks. Its properly distributed using **Gossip Protocol** with the idea of eventual consistency.
-
-<p>
-<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/baltej223/dukedb/ci.yml">
+DukeDB is an simple and small distributed database implementing membership, <b>gossip</b>, routing, failure detection, and replication without relying on 
+existing distributed systems frameworks. Its properly distributed using <b>Gossip Protocol</b> with the idea of eventual consistency.
 </p>
+<p align="center">
+  <img alt="Language GoLang" src="https://img.shields.io/badge/Language-Go-blue">
+  <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/baltej223/dukedb/ci.yml">
+</p>
+</div>
 
 ## Current Capabilities
 
@@ -167,6 +170,9 @@ Writes are replicated to the configured replica set, allowing data to remain ava
          └─────────────────────────────────────┘
 ```
 # Running a Duke node manually
+> [!NOTE]
+> Its recommned to use [duke declarative orchestrator](https://github.com/baltej223/duke-orchestrator) for running duke nodes, rather that running nodes by manually.
+
 - There can be two types of duke nodes at the node startup, either a seed node, or a non-seed node.
 For starting a node as a seed node at the time of startup:
 > (Assuming main is the duke compiled executable)
@@ -178,6 +184,20 @@ For starting a node as a non seed node, it needs node id and address of a alread
 ./main -self-addr "localhost:8001" -self-node-id "b" -peer-addr "localhost:8000" -peer-node-id "a" -delay 2 -api-at ":9001" -replication-factor 3 & \
 ```
 ## Parameters definition:
+
+### Node independent params (Params which are needed by all the seed and non seed nodes):
+- `-self-addr`            : The address at which the node will listen information from other nodes.
+- `-self-node-id`         : The id of the node which will be used for communication and identification.
+- `-seed-node=true`       : Only the seed node should receive this as true.
+- `-api-at`               : The address of the client facing API, The address at which the client will send GET/PUT to node.
+- `-replication-factor`   : The number of nodes that must be storing the same key at once as backup. MAKE SURE ITS SAME FOR THE CLUSTER. Default = 1.
+
+### Node dependent params (Params which are needed by only non seed nodes):
+- `-peer-node-id` : Seed node's ID.
+- `-peer-addr`    : Seed node's `-self-address`.
+- `-delay`        : The time to wait before joining the cluster.
+> [!NOTE]
+> `-delay` is optional, but recommended, cause the seed node might just have started, and might be initialising, at the momment, it can be anything between 2->10 (seconds)  
 
 ## Contributing
 Its a rather new project, any types of contribution, bug reports, features, and changes are accepted.
