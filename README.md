@@ -8,6 +8,7 @@ existing distributed systems frameworks. Its properly distributed using <b>Gossi
 <p align="center">
   <img alt="Language GoLang" src="https://img.shields.io/badge/Language-Go-blue">
   <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/baltej223/dukedb/ci.yml">
+  <img alt="Docker Image size" src="https://img.shields.io/docker/image-size/baltej21/dukedb">
 </p>
 </div>
 
