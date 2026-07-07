@@ -578,7 +578,7 @@ func CreatePutRedirectMessage(
 	membershipVersion int, // current (my) membership version
 ) Message {
 	return Message{
-		Type:      PUT_REJ,
+		Type:      PUT_REDIRECT,
 		RequestID: requestID,
 		Headers: map[string]string{
 			"SUCCESS":            "false",

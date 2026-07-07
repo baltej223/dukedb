@@ -39,21 +39,6 @@ func (s *Server) Start(connectionHandler func(conn net.Conn)) error {
 	}
 }
 
-// func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
-// 	raw, err := readMessage(conn)
-// 	if err != nil {
-// 		return
-// 	}
-//
-// 	parsed, err := Parse(raw)
-// 	if err != nil {
-// 		return
-// 	}
-//
-// 	dispatch(parsed)
-// }
-//
-
 func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
 	dukelog.Println("New connection")
 

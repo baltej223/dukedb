@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"net"
 	"time"
 
 	"github.com/baltej223/dukedb/internal/api"
 	"github.com/baltej223/dukedb/internal/cluster"
+	"github.com/baltej223/dukedb/internal/dukerror"
 	"github.com/baltej223/dukedb/internal/node"
 	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
@@ -32,18 +32,18 @@ func main() {
 	// Flags check
 	if *isSeedNode {
 		if *peerAddress != "" || *peerNodeID != "" {
-			panic("Peers can't be defined for seed node.")
+			dukerror.Handle(dukerror.ErrPeersDefinedForSeedNode)
 		}
 	} else {
 		if *peerAddress == "" || *peerNodeID == "" {
-			panic("One Peer should be defined for a non seed node.")
+			dukerror.Handle(dukerror.ErrPeersDefinedForSeedNode)
 		}
 	}
 	// Flags Check END
 
 	// Start Logging here
 	defer dukelog.Flush()
-	//
+	// ------------------
 
 	hostname := *selfAddress
 	var me *node.Node
@@ -61,6 +61,7 @@ func main() {
 		neighbours,
 		10*time.Second,
 		*rf,
+		&transport.Server{},
 	)
 	storing.InitialiseKV()
 
@@ -78,13 +79,15 @@ func main() {
 			)
 		})
 		if err != nil {
-			dukelog.Fatal(err)
+			dukerror.Handle(dukerror.Normalize(err))
+		} else {
+			me.TransportServer = server
 		}
-		fmt.Println("Done")
+		dukelog.Println("Server: Done")
 	}()
 	// END
 
-	// Needed
+	// Initial Joining request
 	if *peerAddress != "" && !*isSeedNode {
 		time.Sleep(time.Duration(*delay) * time.Second)
 		joingRequest,
@@ -93,7 +96,7 @@ func main() {
 			*selfAddress,
 		)
 		if err != nil {
-			panic(err)
+			dukerror.Handle(dukerror.Normalize(err))
 		}
 
 		_, err = me.SendRequestAndWait(
@@ -102,7 +105,7 @@ func main() {
 			100*time.Second,
 		)
 		if err != nil {
-			panic(err)
+			dukerror.Handle(dukerror.Normalize(dukerror.ErrClusterJoiningFailed))
 		}
 	}
 
@@ -110,7 +113,7 @@ func main() {
 	go func() {
 		err := me.StartGossipLoop(false)
 		if err != nil {
-			dukelog.Printf("gossip failed: %v", err)
+			dukerror.Handle(dukerror.Normalize(err))
 		}
 	}()
 

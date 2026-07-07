@@ -17,13 +17,6 @@ import (
 // }
 
 func handlePing(msg transport.ParsedMessage, me *Node) {
-	dukelog.Printf(
-		"[node=%s] received PING request_id=%s from node=%s",
-		me.ID,
-		msg.RequestID,
-		msg.NodeID,
-	)
-
 	pong := transport.CreatePongMessage(
 		msg.RequestID,
 		me.ID,
@@ -38,7 +31,6 @@ func handlePing(msg transport.ParsedMessage, me *Node) {
 			me.ID,
 			msg.NodeID,
 		)
-		panic("error")
 	}
 
 	dukelog.Printf(

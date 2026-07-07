@@ -31,6 +31,9 @@ type Node struct {
 	MembershipVersion int
 
 	ReplicationFactor int
+
+	TransportServer *transport.Server
+
 	// Transport 	 *transport.Transport
 	// Storage     *storage.Engine
 	// Router      *routing.Router
@@ -52,6 +55,7 @@ func Initialise(
 	peers []cluster.Peer,
 	GossipLoopTime time.Duration,
 	ReplicationFactor int,
+	TransportServer *transport.Server,
 ) *Node {
 	return &Node{
 		ID:       ID,
@@ -74,6 +78,8 @@ func Initialise(
 		MembershipVersion: 0,
 
 		ReplicationFactor: ReplicationFactor,
+
+		TransportServer: TransportServer,
 	}
 }
 
