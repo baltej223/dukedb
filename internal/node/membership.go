@@ -19,7 +19,7 @@ func handleMembership(msg transport.ParsedMessage, me *Node) {
 		if _, exists := currentPeers[p.NodeID]; !exists {
 			if p.NodeID != me.ID {
 				me.Cluster.AddPeer(cluster.NewPeer(p.NodeID, p.Addr))
-				me.MembershipVersion++
+				IncreaseMembershipVersion(me)
 			}
 		}
 	}
@@ -49,7 +49,7 @@ func (me *Node) StartGossipLoop(printit bool) error {
 
 		gossipMessage, err := transport.CreateMembershipMessage(
 			currentNeighbours,
-			me.MembershipVersion,
+			GetMembershipVersion(me),
 		)
 		if err != nil {
 			return err
@@ -77,7 +77,7 @@ func handleSYNCMembership(msg transport.ParsedMessage, me *Node) {
 	gosspipMessage, err := transport.
 		CreateSYNCMebershipResponseMessage(
 			me.Cluster.GetPeers(),
-			me.MembershipVersion,
+			GetMembershipVersion(me),
 			msg.RequestID)
 	if err != nil {
 		return

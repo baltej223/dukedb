@@ -27,8 +27,10 @@ type Node struct {
 	SuspectedDeadPeersMu sync.RWMutex
 	Cluster              *cluster.ClusterManager
 
-	GossipLoopTime    time.Duration
-	MembershipVersion int
+	GossipLoopTime time.Duration
+
+	MembershipVersion   int
+	MembershipVersionMu sync.RWMutex
 
 	ReplicationFactor int
 
@@ -250,4 +252,25 @@ func PUT(key, value string, me *Node) error {
 			return PutFailed
 		}
 	}
+}
+
+func GetMembershipVersion(me *Node) int {
+	me.MembershipVersionMu.RLock()
+	defer me.MembershipVersionMu.RUnlock()
+
+	return me.MembershipVersion
+}
+
+func IncreaseMembershipVersion(me *Node) {
+	me.MembershipVersionMu.Lock()
+	defer me.MembershipVersionMu.Unlock()
+
+	me.MembershipVersion = me.MembershipVersion + 1
+}
+
+func UpdateMembershipVersion(me *Node, newVersion int) {
+	me.MembershipVersionMu.Lock()
+	defer me.MembershipVersionMu.Unlock()
+
+	me.MembershipVersion = newVersion
 }
