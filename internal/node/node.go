@@ -169,14 +169,16 @@ func (me *Node) AllNodesSort() []cluster.Peer {
 type ErrorCode error
 
 var (
-	KeyNotExists ErrorCode = errors.New("KET NOT EXISTS")
+	KeyNotExists ErrorCode = errors.New("KEY NOT EXISTS")
 	ErrorOccured ErrorCode = errors.New("ERROR OCCURED")
 	PutFailed    ErrorCode = errors.New("PUT FAILED")
 )
 
 func GET(key string, me *Node) (string, error) {
 	owner := routing.FindOwner(key, me.AllNodesSort())
+	dukelog.Printf("CLIENT GET REQ RECEIVED, owner node?: %s", owner.NodeID == me.ID)
 	if owner.NodeID == me.ID {
+		dukelog.Print("Own storing is used.")
 		if storing.Exists(key) {
 			value, ok := storing.Get(key)
 			if !ok {
@@ -196,34 +198,38 @@ func GET(key string, me *Node) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		response, err := me.SendRequestAndWait(
-			owner,
-			request,
-			10*time.Second,
+		response, err := me.SendRequestAndWait(owner, request, 10*time.Second)
+
+		if err == nil && response.Found {
+			return string(response.Value), nil
+		}
+
+		// Try replicas
+		replicas := routing.FindReplicas(
+			key,
+			me.AllNodesSort(),
+			me.ReplicationFactor,
 		)
 
-		if !response.Found || err != nil {
-			replicas := routing.FindReplicas(
-				key,
-				me.AllNodesSort(),
-				me.ReplicationFactor,
+		for _, replica := range replicas {
+			if replica.NodeID == me.ID {
+				continue
+			}
+			response, err = me.SendRequestAndWait(
+				replica,
+				request,
+				10*time.Second,
 			)
-			for _, replica := range replicas {
-				response, err = me.SendRequestAndWait(
-					replica,
-					request,
-					10*time.Second,
-				)
-				if err != nil {
-					continue
-				}
-				if response.Found {
-					return string(response.Value), nil
-				}
+			if err != nil {
+				continue
+			}
+
+			if response.Found {
+				return string(response.Value), nil
 			}
 		}
 
-		return string(response.Value), nil
+		return "", KeyNotExists
 	}
 }
 

@@ -5,17 +5,6 @@ import (
 	dukelog "github.com/baltej223/dukedb/log"
 )
 
-// func handlePing(msg transport.ParsedMessage, me Node) {
-// 	pong := transport.CreatePongMessage(
-// 		msg.RequestID,
-// 		me.ID,
-// 	)
-//
-// 	peer, _ := cluster.PeerFromNodeID(msg.NodeID)
-//
-// 	transport.SendMessage(peer, pong)
-// }
-
 func handlePing(msg transport.ParsedMessage, me *Node) {
 	pong := transport.CreatePongMessage(
 		msg.RequestID,
@@ -32,13 +21,6 @@ func handlePing(msg transport.ParsedMessage, me *Node) {
 			msg.NodeID,
 		)
 	}
-
-	dukelog.Printf(
-		"[node=%s] sending PONG request_id=%s to node=%s",
-		me.ID,
-		msg.RequestID,
-		peer.NodeID,
-	)
 
 	if err := transport.SendMessage(peer, pong); err != nil {
 		dukelog.Printf(

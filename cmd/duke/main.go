@@ -26,6 +26,7 @@ func main() {
 	delay := flag.Int("delay", 5, "[Debug]: Initial Delay Before sending first request")
 	apiAt := flag.String("api-at", ":9000", "Where to run API server at?")
 	rf := flag.Int("replication-factor", 1, "The shared replication factor of the cluster.")
+	timerTicker := flag.Int("dead-check-ticker-timer", 10, "The time to wait before macking an another check for all the suspected dead peers.")
 	// FLAGS END
 	flag.Parse()
 
@@ -119,7 +120,11 @@ func main() {
 
 	go func() {
 		apiServer := api.NewServer(*apiAt, me)
-		apiServer.Start()
+		_ = apiServer.Start()
+	}()
+
+	go func() {
+		me.StartSuspectedPeerChecker(time.Duration((*timerTicker) * int(time.Second)))
 	}()
 
 	select {}

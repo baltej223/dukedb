@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/baltej223/dukedb/internal/node"
+	dukelog "github.com/baltej223/dukedb/log"
 )
 
 type Server struct {
@@ -156,6 +157,7 @@ func (s *Server) handleGet(
 	if err != nil {
 		resp = GetResponse{
 			Found: false,
+			Error: err.Error(),
 			Value: "",
 		}
 	} else {
@@ -170,5 +172,6 @@ func (s *Server) handleGet(
 		"application/json",
 	)
 
+	dukelog.Print("To sent back is ", resp)
 	json.NewEncoder(w).Encode(resp)
 }

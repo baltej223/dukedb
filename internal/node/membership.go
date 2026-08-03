@@ -1,9 +1,11 @@
 package node
 
 import (
+	"errors"
 	"time"
 
 	"github.com/baltej223/dukedb/internal/cluster"
+	"github.com/baltej223/dukedb/internal/dukerror"
 	"github.com/baltej223/dukedb/internal/transport"
 	dukelog "github.com/baltej223/dukedb/log"
 	"github.com/baltej223/dukedb/scripts"
@@ -61,7 +63,9 @@ func (me *Node) StartGossipLoop(printit bool) error {
 			}
 			err := transport.SendMessage(target, gossipMessage)
 			if err != nil {
-				return err
+				if errors.Is(err, dukerror.ErrNetwork) {
+					me.AddSuspectedDeadPeer(target)
+				}
 			}
 		}
 
