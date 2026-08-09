@@ -115,9 +115,12 @@ func (me *Node) SendRequestAndWaitWithoutDeadCheckPeer(
 		return transport.ParsedMessage{}, err
 	}
 
-	response, _ := me.WaitForPendingRequest(
+	response, err := me.WaitForPendingRequest(
 		msg.RequestID,
 		timeout,
 	)
+	if err != nil {
+		return transport.ParsedMessage{}, err
+	}
 	return response, nil
 }

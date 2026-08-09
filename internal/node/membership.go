@@ -86,11 +86,8 @@ func (me *Node) StartGossipLoop(printit bool) error {
 			}
 			err := transport.SendMessage(target, gossipMessage)
 			if err != nil {
-				dukelog.Printf("[line 85 membership.go]: Node suspected dead:, Error:%s", err.Error())
 				if errors.Is(dukerror.Normalize(err), dukerror.ErrNetwork) {
-					dukelog.Println("Adding the dead node to list.")
 					me.AddSuspectedDeadPeer(target)
-					dukelog.Printf("After add: %+v", me.GetSuspectedPeers())
 				}
 			}
 		}

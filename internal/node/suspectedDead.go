@@ -113,13 +113,12 @@ func (me *Node) CheckSuspectedPeers() {
 			dukelog.Printf("The Error is: %s\n", err.Error())
 			if errors.Is(
 				dukerror.Normalize(err),
-				ErrRequestTimedOut,
+				dukerror.ErrNetwork,
 			) {
 				// Is SuspectedDeadPeer
 				// remove from cluster
 				// membership++
 				// gossip
-				dukelog.Printf("A suspected dead peer found: %s", peer.NodeID)
 				me.Cluster.RemovePeer(peer.NodeID)
 				IncreaseMembershipVersion(me)
 			} else {
