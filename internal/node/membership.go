@@ -17,13 +17,29 @@ func handleMembership(msg transport.ParsedMessage, me *Node) {
 		currentPeers[p.NodeID] = p.Addr
 	}
 
+	changed := false
+
 	for _, p := range msg.Peers {
 		if _, exists := currentPeers[p.NodeID]; !exists {
 			if p.NodeID != me.ID {
+				changed = true
 				me.Cluster.AddPeer(cluster.NewPeer(p.NodeID, p.Addr))
-				IncreaseMembershipVersion(me)
 			}
 		}
+	}
+
+	for _, p := range msg.SuspectedDeadPeers {
+		if p.Peer.NodeID == me.ID {
+			continue
+		}
+		if me.IsSuspectedDead(p.Peer.NodeID) {
+			continue
+		}
+		me.AddSuspectedDeadPeer(p.Peer)
+		changed = true
+	}
+	if changed {
+		IncreaseMembershipVersion(me)
 	}
 }
 
@@ -49,8 +65,15 @@ func (me *Node) StartGossipLoop(printit bool) error {
 			return err
 		}
 
+		// Convert it to rigth type
+		// SuspectedDeadPeers print
+		dukelog.Printf(
+			"CreateMembershipMessage got %d suspected peers",
+			len(me.GetSuspectedPeers()),
+		)
 		gossipMessage, err := transport.CreateMembershipMessage(
 			currentNeighbours,
+			me.GetSuspectedPeers(),
 			GetMembershipVersion(me),
 		)
 		if err != nil {
@@ -63,8 +86,11 @@ func (me *Node) StartGossipLoop(printit bool) error {
 			}
 			err := transport.SendMessage(target, gossipMessage)
 			if err != nil {
-				if errors.Is(err, dukerror.ErrNetwork) {
+				dukelog.Printf("[line 85 membership.go]: Node suspected dead:, Error:%s", err.Error())
+				if errors.Is(dukerror.Normalize(err), dukerror.ErrNetwork) {
+					dukelog.Println("Adding the dead node to list.")
 					me.AddSuspectedDeadPeer(target)
+					dukelog.Printf("After add: %+v", me.GetSuspectedPeers())
 				}
 			}
 		}

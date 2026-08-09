@@ -139,10 +139,16 @@ type ParsedMessage struct {
 
 	Reason string
 
-	Peers []Peer
+	Peers              []Peer
+	SuspectedDeadPeers []SuspectedPeer
 
 	SuggestedOwner string
 	SuggestedAddr  string
+}
+
+type SuspectedPeer struct {
+	Peer      cluster.Peer
+	SinceUnix int64
 }
 
 func (PM ParsedMessage) String() string {
@@ -162,6 +168,10 @@ func DecodeValue(v string) ([]byte, error) {
 
 // Serialize converts the Message struct to string
 func Serialize(msg Message) string {
+	toPrint := false
+	if msg.Type == GOSSIPMEMBERSHIP {
+		toPrint = true
+	}
 	var b strings.Builder
 
 	b.WriteString(msg.Type.String())
@@ -189,6 +199,9 @@ func Serialize(msg Message) string {
 		b.WriteByte('\n')
 	}
 
+	if toPrint {
+		fmt.Print(b.String())
+	}
 	return b.String()
 }
 
@@ -338,6 +351,10 @@ func Parse(raw string) (ParsedMessage, error) {
 		}
 		msg.MembershipVersion = version
 		msg.Peers, _ = parsePeers(headers) // Both of these messages looks exactly the same
+		msg.SuspectedDeadPeers, err = parseSuspectedPeers(headers)
+		if err != nil {
+			return ParsedMessage{}, err
+		}
 
 	case SYNC_MEMBERSHIP:
 		msg.NodeID = headers["NODE_ID"]
@@ -402,6 +419,59 @@ func parsePeers(headers map[string]string) ([]cluster.Peer, error) {
 			},
 		)
 	}
+
+	return peers, nil
+}
+
+func parseSuspectedPeers(headers map[string]string) ([]SuspectedPeer, error) {
+	countStr := headers["SUSPECTED_PEER_COUNT"]
+
+	count, err := strconv.Atoi(countStr)
+	if err != nil {
+		return nil, err
+	}
+
+	peers := make([]SuspectedPeer, 0, count)
+
+	for i := 0; i < count; i++ {
+
+		nodeID := headers[fmt.Sprintf(
+			"SUSPECTED_PEER_%d_NODE_ID",
+			i,
+		)]
+
+		addr := headers[fmt.Sprintf(
+			"SUSPECTED_PEER_%d_ADDR",
+			i,
+		)]
+
+		// NOTE: CHECK LINE 410
+		// sinceStr := headers[fmt.Sprintf(
+		// 	"SUSPECTED_PEER_%d_SINCE",
+		// 	i,
+		// )]
+		//
+		// sinceUnix, err := strconv.ParseInt(
+		// 	sinceStr,
+		// 	10,
+		// 	64,
+		// )
+		// if err != nil {
+		// 	return nil, err
+		// }
+		//
+		peers = append(
+			peers,
+			SuspectedPeer{
+				Peer: Peer{
+					NodeID: nodeID,
+					Addr:   addr,
+				},
+				// SinceUnix: sinceUnix,
+			},
+		)
+	}
+
 	return peers, nil
 }
 
@@ -489,8 +559,9 @@ func CreateJoinMessage(
 	}, nil
 }
 
-func CreateMembershipMessage( // This is literally same as CreateJoinACKMessage()
+func CreateMembershipMessage(
 	peers []Peer,
+	suspectedDeadPeers []cluster.Peer,
 	membershipVersion int,
 ) (Message, error) {
 	requestID, err := createRequestID()
@@ -514,6 +585,32 @@ func CreateMembershipMessage( // This is literally same as CreateJoinACKMessage(
 			"PEER_%d_ADDR",
 			i,
 		)] = peer.Addr
+	}
+
+	headers["SUSPECTED_PEER_COUNT"] = strconv.Itoa(len(suspectedDeadPeers))
+
+	for i, peer := range suspectedDeadPeers {
+
+		headers[fmt.Sprintf(
+			"SUSPECTED_PEER_%d_NODE_ID",
+			i,
+		)] = peer.NodeID
+
+		headers[fmt.Sprintf(
+			"SUSPECTED_PEER_%d_ADDR",
+			i,
+		)] = peer.Addr
+
+		// INFO: CHECK LINE 420
+
+		// NOTE: FIX IT
+		// headers[fmt.Sprintf(
+		// 	"SUSPECTED_PEER_%d_SINCE",
+		// 	i,
+		// )] = strconv.FormatInt(
+		// 	peer.SinceUnix,
+		// 	10,
+		// )
 	}
 
 	return Message{

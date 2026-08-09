@@ -12,9 +12,10 @@ func handlePong(msg transport.ParsedMessage, me *Node) {
 		msg.RequestID,
 		msg.NodeID,
 	)
-	if me.IsSuspectedDead(msg.NodeID) {
-		me.RemoveSuspectedDeadPeer(msg.NodeID)
-	}
+
+	// if me.IsSuspectedDead(msg.NodeID) {
+	// 	me.RemoveSuspectedDeadPeer(msg.NodeID)
+	// }
 
 	dukelog.Printf(
 		"[node=%s] pending request fulfilled request_id=%s",
