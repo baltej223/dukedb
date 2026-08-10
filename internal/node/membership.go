@@ -65,12 +65,6 @@ func (me *Node) StartGossipLoop(printit bool) error {
 			return err
 		}
 
-		// Convert it to rigth type
-		// SuspectedDeadPeers print
-		dukelog.Printf(
-			"CreateMembershipMessage got %d suspected peers",
-			len(me.GetSuspectedPeers()),
-		)
 		gossipMessage, err := transport.CreateMembershipMessage(
 			currentNeighbours,
 			me.GetSuspectedPeers(),

@@ -168,10 +168,6 @@ func DecodeValue(v string) ([]byte, error) {
 
 // Serialize converts the Message struct to string
 func Serialize(msg Message) string {
-	toPrint := false
-	if msg.Type == GOSSIPMEMBERSHIP {
-		toPrint = true
-	}
 	var b strings.Builder
 
 	b.WriteString(msg.Type.String())
@@ -199,9 +195,6 @@ func Serialize(msg Message) string {
 		b.WriteByte('\n')
 	}
 
-	if toPrint {
-		fmt.Print(b.String())
-	}
 	return b.String()
 }
 

@@ -112,7 +112,7 @@ func main() {
 
 	// Gossip loop
 	go func() {
-		err := me.StartGossipLoop(false)
+		err := me.StartGossipLoop(true)
 		if err != nil {
 			dukerror.Handle(dukerror.Normalize(err))
 		}
