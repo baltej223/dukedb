@@ -27,6 +27,7 @@ func main() {
 	apiAt := flag.String("api-at", ":9000", "Where to run API server at?")
 	rf := flag.Int("replication-factor", 1, "The shared replication factor of the cluster.")
 	timerTicker := flag.Int("dead-check-ticker-timer", 10, "The time to wait before macking an another check for all the suspected dead peers.")
+	printMembershipInfo := flag.Bool("print-membership-info", false, "<DEBUG> Should the node print the cluster membership info.")
 	// FLAGS END
 	flag.Parse()
 
@@ -112,7 +113,7 @@ func main() {
 
 	// Gossip loop
 	go func() {
-		err := me.StartGossipLoop(true)
+		err := me.StartGossipLoop(*printMembershipInfo)
 		if err != nil {
 			dukerror.Handle(dukerror.Normalize(err))
 		}
