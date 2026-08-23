@@ -1,9 +1,11 @@
 package node
 
 import (
+	"errors"
 	"time"
 
 	"github.com/baltej223/dukedb/internal/cluster"
+	"github.com/baltej223/dukedb/internal/dukerror"
 	"github.com/baltej223/dukedb/internal/routing"
 	"github.com/baltej223/dukedb/internal/storing"
 	"github.com/baltej223/dukedb/internal/transport"
@@ -71,11 +73,41 @@ func handleGet(
 				return
 			}
 		} else {
-			reject(msg.RequestID, me, false)
+			if !IsReplica(msg.Key, me) {
+				val, err := GetValuesFromReplicas(msg.Key, me, 30*time.Second)
+				if err != nil {
+					if errors.Is(dukerror.Normalize(err), dukerror.ErrKeyNotFound) {
+						reject(msg.RequestID, me, false)
+						return
+					}
+				}
+
+				response := transport.CreateGetResponseMessage(
+					msg.RequestID,
+					true,
+					[]byte(val),
+				)
+
+				peerToReply, ok := me.Cluster.GetPeer(
+					msg.NodeID,
+				)
+				if !ok {
+					return
+				}
+
+				err = transport.SendMessage(
+					peerToReply,
+					response,
+				)
+				if err != nil {
+					return
+				}
+			}
 		}
 	} else {
 		// Here a new request needs to be made
 		reject(msg.RequestID, me, true)
+		return
 	}
 }
 

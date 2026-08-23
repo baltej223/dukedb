@@ -114,3 +114,12 @@ func (c *ClusterManager) Dump() string {
 
 	return b.String()
 }
+
+func (c *ClusterManager) ReplacePeers(
+	peers map[string]Peer,
+) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.Neighbours = peers
+}

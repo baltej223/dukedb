@@ -175,53 +175,70 @@ var (
 	PutFailed    ErrorCode = errors.New("PUT FAILED")
 )
 
-func GetValuesFromReplicas(owner cluster.Peer, key string, me *Node, wait time.Duration) (string, error) {
-	request, err := transport.CreateGetMessage(
-		key,
-		me.ID,
-		me.MembershipVersion,
-	)
-	if err != nil {
-		return "", err
-	}
-	response, err := me.SendRequestAndWait(owner, request, wait)
-
-	if err == nil && response.Found {
-		return string(response.Value), nil
-	}
-
-	// Try replicas
+func GetValuesFromReplicas(key string, me *Node, wait time.Duration) (string, error) {
 	replicas := routing.FindReplicas(
 		key,
 		me.AllNodesSort(),
 		me.ReplicationFactor,
+	)
+	dukelog.Printf(
+		"[GET TRACE] key=%s replicas=%+v me=%s",
+		key,
+		replicas,
+		me.ID,
 	)
 	dukelog.Print("Trying to get the values from the replicas!")
 	for _, replica := range replicas {
 		if replica.NodeID == me.ID {
 			continue
 		}
-		response, err = me.SendRequestAndWait(
-			replica,
-			request,
-			10*time.Second,
+
+		request, err := transport.CreateGetMessage(
+			key,
+			me.ID,
+			me.MembershipVersion,
 		)
 		if err != nil {
 			continue
 		}
-		dukelog.Printf("[%s] => %s, %s \n", replica.NodeID, response.Found, response.Value)
+
+		dukelog.Printf(
+			"[GET TRACE] sending key=%s request=%s to=%s",
+			key,
+			request.RequestID,
+			replica.NodeID,
+		)
+		response, err := me.SendRequestAndWait(
+			replica,
+			request,
+			10*time.Second,
+		)
+		dukelog.Printf(
+			"[GET TRACE] response key=%s request=%s from=%s err=%v found=%v",
+			key,
+			request.RequestID,
+			replica.NodeID,
+			err,
+			response.Found,
+		)
+		if err != nil {
+			dukelog.Errorf(
+				"[GET REPLICA] node=%s error=%s",
+				replica.NodeID,
+				err.Error(),
+			)
+			continue
+		}
+
+		dukelog.Printf(
+			"[GET REPLICA] node=%s found=%t value=%s",
+			replica.NodeID,
+			response.Found,
+			response.Value,
+		)
 
 		if response.Found {
-			// I am not checking if all the replicas have same value
 			return string(response.Value), nil
-		} else {
-			dukelog.Printf(
-				"KEY=%s owner=%s replicas=%+v ring=%+v",
-				request.Headers["KEY"],
-				owner.NodeID,
-				replicas,
-				me.AllNodesSort(),
-			)
 		}
 	}
 	return "", KeyNotExists
@@ -229,16 +246,64 @@ func GetValuesFromReplicas(owner cluster.Peer, key string, me *Node, wait time.D
 
 func GET(key string, me *Node) (string, error) {
 	owner := routing.FindOwner(key, me.AllNodesSort())
+	dukelog.Printf(
+		"[ROUTING] node=%s key=%s owner=%s ring=%+v version=%d",
+		me.ID,
+		key,
+		owner.NodeID,
+		me.AllNodesSort(),
+		GetMembershipVersion(me),
+	)
 	if owner.NodeID == me.ID {
-		dukelog.Print("Own storing is used.")
+		dukelog.Print("Client Request Received by Owner node!")
 		if storing.Exists(key) {
+			dukelog.Print("Own storing is used. The key exists.")
 			value, ok := storing.Get(key)
 			if !ok {
 				return "", ErrorOccured
 			}
 			return string(value), nil
 		} else {
-			val, err := GetValuesFromReplicas(owner, key, me, 10*time.Second)
+			dukelog.Print("Own storing is used and the key doesn't exists. Trying replicas")
+			val, err := GetValuesFromReplicas(key, me, 10*time.Second)
+			if err != nil {
+				dukelog.Errorf("Had an error while getting value from replicas! Error: %s", err.Error())
+				if errors.Is(KeyNotExists, err) {
+					return "", KeyNotExists
+				} else {
+					return "", dukerror.Normalize(err)
+				}
+			}
+			return string(val), nil
+		}
+	} else {
+		dukelog.Print("Client Request Received by non owner node.")
+		val, err := transport.CreateGetMessage(key, me.ID, GetMembershipVersion(me))
+		if err != nil {
+			dukelog.Errorf("Error Occured: %s", err.Error())
+			dukerror.Handle(dukerror.Normalize(err))
+		}
+		response, err := me.SendRequestAndWait(owner, val, 10*time.Second)
+		dukelog.Print(response)
+		if err != nil {
+			if errors.Is(dukerror.Normalize(err), dukerror.ErrNetwork) {
+				val, err := GetValuesFromReplicas(key, me, 10*time.Second)
+				if err != nil {
+					if errors.Is(KeyNotExists, err) {
+						return "", KeyNotExists
+					} else {
+						return "", dukerror.Normalize(err)
+					}
+				}
+				return string(val), nil
+			} else {
+				dukerror.Handle(dukerror.Normalize(err))
+			}
+		}
+		if response.Found {
+			return string(response.Value), nil
+		} else {
+			val, err := GetValuesFromReplicas(key, me, 10*time.Second)
 			if err != nil {
 				if errors.Is(KeyNotExists, err) {
 					return "", KeyNotExists
@@ -248,21 +313,19 @@ func GET(key string, me *Node) (string, error) {
 			}
 			return val, nil
 		}
-	} else {
-		val, err := GetValuesFromReplicas(owner, key, me, 10*time.Second)
-		if err != nil {
-			if errors.Is(KeyNotExists, err) {
-				return "", KeyNotExists
-			} else {
-				return "", dukerror.Normalize(err)
-			}
-		}
-		return val, nil
 	}
 }
 
 func PUT(key, value string, me *Node) error {
 	owner := routing.FindOwner(key, me.AllNodesSort())
+	dukelog.Printf(
+		"[ROUTING] node=%s key=%s owner=%s ring=%+v version=%d",
+		me.ID,
+		key,
+		owner.NodeID,
+		me.AllNodesSort(),
+		GetMembershipVersion(me),
+	)
 	if owner.NodeID == me.ID {
 		storing.Put(key, []byte(value))
 		return nil

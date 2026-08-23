@@ -2,16 +2,15 @@ package node
 
 import (
 	"github.com/baltej223/dukedb/internal/transport"
-	dukelog "github.com/baltej223/dukedb/log"
 )
 
 func Dispatch(msg transport.ParsedMessage, me *Node) {
-	dukelog.Printf(
-		"[node=%s] dispatching %s request_id=%s",
-		me.ID,
-		msg.Type,
-		msg.RequestID,
-	)
+	// dukelog.Printf(
+	// 	"[node=%s] dispatching %s request_id=%s",
+	// 	me.ID,
+	// 	msg.Type,
+	// 	msg.RequestID,
+	// )
 
 	switch msg.Type {
 	case transport.PING:

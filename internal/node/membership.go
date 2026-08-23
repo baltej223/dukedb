@@ -12,33 +12,49 @@ import (
 )
 
 func handleMembership(msg transport.ParsedMessage, me *Node) {
-	currentPeers := make(map[string]string)
-	for _, p := range me.Cluster.GetPeers() {
-		currentPeers[p.NodeID] = p.Addr
+	currentVersion := GetMembershipVersion(me)
+
+	if msg.MembershipVersion < currentVersion {
+		return
 	}
 
 	changed := false
 
+	// Add peers that we don't already have.
 	for _, p := range msg.Peers {
-		if _, exists := currentPeers[p.NodeID]; !exists {
-			if p.NodeID != me.ID {
-				changed = true
-				me.Cluster.AddPeer(cluster.NewPeer(p.NodeID, p.Addr))
-			}
+		if p.NodeID == me.ID {
+			continue
 		}
+
+		if _, exists := me.Cluster.GetPeer(p.NodeID); exists {
+			continue
+		}
+
+		me.Cluster.AddPeer(p)
+		changed = true
 	}
 
+	if msg.MembershipVersion > currentVersion {
+		UpdateMembershipVersion(me, msg.MembershipVersion)
+		changed = true
+	}
+
+	// Merge suspected-dead information.
 	for _, p := range msg.SuspectedDeadPeers {
 		if p.Peer.NodeID == me.ID {
 			continue
 		}
+
 		if me.IsSuspectedDead(p.Peer.NodeID) {
 			continue
 		}
+
 		me.AddSuspectedDeadPeer(p.Peer)
 		changed = true
 	}
-	if changed {
+
+	// Local membership changes need a new version.
+	if changed && msg.MembershipVersion <= currentVersion {
 		IncreaseMembershipVersion(me)
 	}
 }

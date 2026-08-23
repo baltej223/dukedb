@@ -134,8 +134,8 @@ type ParsedMessage struct {
 	Key   string
 	Value []byte
 
-	Found   bool
-	Success bool
+	Found   bool //
+	Success bool // What is the difference?
 
 	Reason string
 

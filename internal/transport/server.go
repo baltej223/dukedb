@@ -56,11 +56,11 @@ func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
 		return
 	}
 
-	dukelog.Printf(
-		"Parsed Type=%s Request_id=%s",
-		parsed.Type,
-		parsed.RequestID,
-	)
+	// dukelog.Printf(
+	// 	"Parsed Type=%s Request_id=%s",
+	// 	parsed.Type,
+	// 	parsed.RequestID,
+	// )
 
 	dispatch(parsed)
 }
