@@ -102,6 +102,24 @@ func handleGet(
 				if err != nil {
 					return
 				}
+			} else {
+				res := transport.CreateGetREJMessage(
+					msg.RequestID,
+					GetMembershipVersion(me),
+				)
+				peerToReply, ok := me.Cluster.GetPeer(
+					msg.NodeID,
+				)
+				if !ok {
+					return
+				}
+				err := transport.SendMessage(
+					peerToReply,
+					res,
+				)
+				if err != nil {
+					return
+				}
 			}
 		}
 	} else {

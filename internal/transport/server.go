@@ -25,12 +25,12 @@ func (s *Server) Start(connectionHandler func(conn net.Conn)) error {
 
 	defer listener.Close()
 
-	dukelog.Println("tcp server listening on", s.address)
+	dukelog.Println("TCP Server Listening On: ", s.address)
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			dukelog.Println("accept error:", err)
+			dukelog.Println("Accept Error:", err)
 			continue
 		}
 
@@ -48,7 +48,7 @@ func HandleConnection(conn net.Conn, dispatch func(ParsedMessage)) {
 		return
 	}
 
-	// dukelog.Printf("raw message:\n%s", raw)
+	dukelog.Printf("Raw Message:\n%s\n\n\n", raw)
 
 	parsed, err := Parse(raw)
 	if err != nil {

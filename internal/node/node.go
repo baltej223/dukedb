@@ -170,7 +170,7 @@ func (me *Node) AllNodesSort() []cluster.Peer {
 type ErrorCode error
 
 var (
-	KeyNotExists ErrorCode = errors.New("KEY NOT EXISTS")
+	KeyNotExists ErrorCode = dukerror.ErrKeyNotFound
 	ErrorOccured ErrorCode = errors.New("ERROR OCCURED")
 	PutFailed    ErrorCode = errors.New("PUT FAILED")
 )
