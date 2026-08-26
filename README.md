@@ -29,10 +29,10 @@ existing distributed systems frameworks. Its properly distributed using <b>Gossi
 -  [x] Custom TCP protocol
 -  [x] End-to-end CI testing
 -  [x] Replication
+-  [x] Failure recovery
 
 In Progress:
 
--  [ ] Failure recovery
 -  [ ] Data migration / rebalancing
 -  [ ] Persistence
 
